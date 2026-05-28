@@ -5,26 +5,26 @@ import { useEffect, useMemo, useState } from "react";
 type Trabalho = {
   id: string;
   data: string;
-  cliente: string;
-  tipo_trabalho: string;
-  valor_cobrado: number;
-  recebido: boolean;
-  entregue: boolean;
-  freela_nome: string;
-  freela_valor: number;
-  freela_pago: boolean;
-  observacoes: string;
+  cliente: string | null;
+  tipo_trabalho: string | null;
+  valor_cobrado: number | null;
+  recebido: boolean | null;
+  entregue: boolean | null;
+  freela_nome: string | null;
+  freela_valor: number | null;
+  freela_pago: boolean | null;
+  observacoes: string | null;
   created_at?: string;
 };
 
 type Custo = {
   id: string;
   data: string;
-  nome: string;
-  valor: number;
-  tipo: "Empresa" | "Pessoal" | "Trabalho";
+  nome: string | null;
+  valor: number | null;
+  tipo: "Empresa" | "Pessoal" | "Trabalho" | string | null;
   trabalho_id?: string | null;
-  observacoes?: string;
+  observacoes?: string | null;
   created_at?: string;
 };
 
@@ -42,19 +42,23 @@ const moeda = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-function money(value: number) {
-  return moeda.format(Number.isFinite(value) ? value : 0);
+function money(value: number | null | undefined) {
+  return moeda.format(Number(value || 0));
 }
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
+function localTodayDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function todayMonthKey() {
-  return todayDate().slice(0, 7);
+  return localTodayDate().slice(0, 7);
 }
 
-function getMonthKey(date: string) {
+function getMonthKey(date: string | null | undefined) {
   return date ? date.slice(0, 7) : "";
 }
 
@@ -73,20 +77,21 @@ function monthLabel(monthKey: string) {
   });
 }
 
-function shortDate(date: string) {
+function shortDate(date: string | null | undefined) {
   if (!date) return "--/--";
   const [, month, day] = date.split("-");
   return `${day}/${month}`;
 }
 
 async function supabaseGet<T>(table: string): Promise<T[]> {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?select=*&order=data.asc`, {
-    headers,
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?select=*&order=data.asc`,
+    { headers, cache: "no-store" }
+  );
 
   if (!response.ok) {
-    throw new Error(`Erro ao buscar ${table}`);
+    const text = await response.text();
+    throw new Error(text);
   }
 
   return response.json();
@@ -136,13 +141,14 @@ export default function FinanceiroJeanNovaes() {
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [custos, setCustos] = useState<Custo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState("");
   const [novoTrabalhoAberto, setNovoTrabalhoAberto] = useState(false);
   const [novoCustoAberto, setNovoCustoAberto] = useState(false);
   const [trabalhoAbertoId, setTrabalhoAbertoId] = useState<string | null>(null);
 
   const [novoTrabalho, setNovoTrabalho] = useState({
-    data: todayDate(),
+    data: localTodayDate(),
     cliente: "",
     tipo_trabalho: "",
     valor_cobrado: "",
@@ -155,17 +161,18 @@ export default function FinanceiroJeanNovaes() {
   });
 
   const [novoCusto, setNovoCusto] = useState({
-    data: todayDate(),
+    data: localTodayDate(),
     tipo: "Empresa" as "Empresa" | "Pessoal",
     nome: "",
     valor: "",
     observacoes: "",
   });
 
-  async function carregarDados() {
+  async function carregarDados(mesParaAbrir?: string) {
     try {
       setLoading(true);
       setErro("");
+
       const [trabalhosData, custosData] = await Promise.all([
         supabaseGet<Trabalho>("trabalhos"),
         supabaseGet<Custo>("custos"),
@@ -173,6 +180,10 @@ export default function FinanceiroJeanNovaes() {
 
       setTrabalhos(trabalhosData);
       setCustos(custosData);
+
+      if (mesParaAbrir) {
+        setMonth(mesParaAbrir);
+      }
     } catch (error) {
       setErro("Não consegui carregar os dados do Supabase.");
       console.error(error);
@@ -185,49 +196,28 @@ export default function FinanceiroJeanNovaes() {
     carregarDados();
   }, []);
 
-  const trabalhosDoMes = useMemo(
-    () =>
-      trabalhos
-        .filter((t) => getMonthKey(t.data) === month)
-        .sort((a, b) => a.data.localeCompare(b.data)),
-    [trabalhos, month]
-  );
+  const trabalhosDoMes = useMemo(() => {
+    return trabalhos
+      .filter((t) => getMonthKey(t.data) === month)
+      .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  }, [trabalhos, month]);
 
-  const custosDoMes = useMemo(
-    () =>
-      custos
-        .filter((c) => getMonthKey(c.data) === month)
-        .sort((a, b) => a.data.localeCompare(b.data)),
-    [custos, month]
-  );
-
-  const stats = useMemo(() => {
-    const entrou = trabalhosDoMes
-      .filter((t) => t.recebido)
-      .reduce((sum, t) => sum + Number(t.valor_cobrado || 0), 0);
-
-    const custosGerais = custosDoMes.reduce((sum, c) => sum + Number(c.valor || 0), 0);
-
-    const freelasPagos = trabalhosDoMes
-      .filter((t) => t.freela_pago)
-      .reduce((sum, t) => sum + Number(t.freela_valor || 0), 0);
-
-    const saiu = custosGerais + freelasPagos;
-
-    return {
-      entrou,
-      saiu,
-      sobrou: entrou - saiu,
-      totalCustosMes: custosDoMes.reduce((sum, c) => sum + Number(c.valor || 0), 0),
-    };
-  }, [trabalhosDoMes, custosDoMes]);
+  const custosDoMes = useMemo(() => {
+    return custos
+      .filter((c) => getMonthKey(c.data) === month)
+      .sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  }, [custos, month]);
 
   function custosDoTrabalho(trabalhoId: string) {
     return custos.filter((c) => c.trabalho_id === trabalhoId);
   }
 
   function totalCustosTrabalho(trabalho: Trabalho) {
-    const custosVinculados = custosDoTrabalho(trabalho.id).reduce((sum, c) => sum + Number(c.valor || 0), 0);
+    const custosVinculados = custosDoTrabalho(trabalho.id).reduce(
+      (sum, c) => sum + Number(c.valor || 0),
+      0
+    );
+
     return custosVinculados + Number(trabalho.freela_valor || 0);
   }
 
@@ -236,31 +226,70 @@ export default function FinanceiroJeanNovaes() {
   }
 
   function trabalhoFinalizado(trabalho: Trabalho) {
-    return trabalho.recebido && trabalho.entregue && (!trabalho.freela_valor || trabalho.freela_pago);
+    const temFreela = Number(trabalho.freela_valor || 0) > 0;
+    return Boolean(trabalho.recebido) && Boolean(trabalho.entregue) && (!temFreela || Boolean(trabalho.freela_pago));
   }
+
+  const stats = useMemo(() => {
+    const faturado = trabalhosDoMes.reduce(
+      (sum, t) => sum + Number(t.valor_cobrado || 0),
+      0
+    );
+
+    const recebido = trabalhosDoMes
+      .filter((t) => Boolean(t.recebido))
+      .reduce((sum, t) => sum + Number(t.valor_cobrado || 0), 0);
+
+    const custosGerais = custosDoMes.reduce(
+      (sum, c) => sum + Number(c.valor || 0),
+      0
+    );
+
+    const freelasPagos = trabalhosDoMes
+      .filter((t) => Boolean(t.freela_pago))
+      .reduce((sum, t) => sum + Number(t.freela_valor || 0), 0);
+
+    const saiu = custosGerais + freelasPagos;
+
+    return {
+      faturado,
+      recebido,
+      saiu,
+      sobrou: recebido - saiu,
+      totalCustosMes: custosGerais,
+    };
+  }, [trabalhosDoMes, custosDoMes]);
 
   async function salvarTrabalho() {
     try {
+      setSalvando(true);
       setErro("");
 
-      const trabalho = await supabaseInsert<Trabalho>("trabalhos", {
-        data: novoTrabalho.data,
-        cliente: novoTrabalho.cliente || "Sem cliente",
-        tipo_trabalho: novoTrabalho.tipo_trabalho || "Trabalho",
-        valor_cobrado: Number(novoTrabalho.valor_cobrado) || 0,
+      const dataDoTrabalho = novoTrabalho.data;
+
+      if (!dataDoTrabalho) {
+        setErro("Preencha a data do trabalho.");
+        return;
+      }
+
+      await supabaseInsert<Trabalho>("trabalhos", {
+        data: dataDoTrabalho,
+        cliente: novoTrabalho.cliente.trim() || "Sem cliente",
+        tipo_trabalho: novoTrabalho.tipo_trabalho.trim() || "Trabalho",
+        valor_cobrado: Number(String(novoTrabalho.valor_cobrado).replace(",", ".")) || 0,
         recebido: novoTrabalho.recebido,
         entregue: novoTrabalho.entregue,
-        freela_nome: novoTrabalho.freela_nome,
-        freela_valor: Number(novoTrabalho.freela_valor) || 0,
+        freela_nome: novoTrabalho.freela_nome.trim(),
+        freela_valor: Number(String(novoTrabalho.freela_valor).replace(",", ".")) || 0,
         freela_pago: novoTrabalho.freela_pago,
         observacoes: novoTrabalho.observacoes,
       });
 
-      setTrabalhos((prev) => [...prev, trabalho]);
-      setMonth(getMonthKey(trabalho.data));
+      const mesDoTrabalho = getMonthKey(dataDoTrabalho);
+
       setNovoTrabalhoAberto(false);
       setNovoTrabalho({
-        data: todayDate(),
+        data: dataDoTrabalho,
         cliente: "",
         tipo_trabalho: "",
         valor_cobrado: "",
@@ -271,37 +300,53 @@ export default function FinanceiroJeanNovaes() {
         freela_pago: false,
         observacoes: "",
       });
+
+      await carregarDados(mesDoTrabalho);
     } catch (error) {
-      setErro("Não consegui salvar o trabalho. Veja se o Supabase está liberado.");
+      setErro("Não consegui salvar o trabalho. Tente novamente.");
       console.error(error);
+    } finally {
+      setSalvando(false);
     }
   }
 
   async function salvarCusto() {
     try {
+      setSalvando(true);
       setErro("");
 
-      const custo = await supabaseInsert<Custo>("custos", {
-        data: novoCusto.data,
-        nome: novoCusto.nome || "Custo",
-        valor: Number(novoCusto.valor) || 0,
+      const dataDoCusto = novoCusto.data;
+
+      if (!dataDoCusto) {
+        setErro("Preencha a data do custo.");
+        return;
+      }
+
+      await supabaseInsert<Custo>("custos", {
+        data: dataDoCusto,
+        nome: novoCusto.nome.trim() || "Custo",
+        valor: Number(String(novoCusto.valor).replace(",", ".")) || 0,
         tipo: novoCusto.tipo,
         observacoes: novoCusto.observacoes,
       });
 
-      setCustos((prev) => [...prev, custo]);
-      setMonth(getMonthKey(custo.data));
+      const mesDoCusto = getMonthKey(dataDoCusto);
+
       setNovoCustoAberto(false);
       setNovoCusto({
-        data: todayDate(),
+        data: dataDoCusto,
         tipo: "Empresa",
         nome: "",
         valor: "",
         observacoes: "",
       });
+
+      await carregarDados(mesDoCusto);
     } catch (error) {
-      setErro("Não consegui salvar o custo. Veja se o Supabase está liberado.");
+      setErro("Não consegui salvar o custo. Tente novamente.");
       console.error(error);
+    } finally {
+      setSalvando(false);
     }
   }
 
@@ -309,7 +354,7 @@ export default function FinanceiroJeanNovaes() {
     const atual = trabalhos.find((t) => t.id === id);
     if (!atual) return;
 
-    const novoValor = !atual[key];
+    const novoValor = !Boolean(atual[key]);
 
     setTrabalhos((prev) =>
       prev.map((t) => (t.id === id ? { ...t, [key]: novoValor } : t))
@@ -317,9 +362,11 @@ export default function FinanceiroJeanNovaes() {
 
     try {
       await supabasePatch<Trabalho>("trabalhos", id, { [key]: novoValor });
+      await carregarDados();
     } catch (error) {
       console.error(error);
-      carregarDados();
+      setErro("Não consegui atualizar o status.");
+      await carregarDados();
     }
   }
 
@@ -379,7 +426,12 @@ export default function FinanceiroJeanNovaes() {
 
           {activeTab === "Dashboard" && (
             <>
-              <ResumoCards entrou={stats.entrou} saiu={stats.saiu} sobrou={stats.sobrou} />
+              <ResumoCards
+                faturado={stats.faturado}
+                recebido={stats.recebido}
+                saiu={stats.saiu}
+                sobrou={stats.sobrou}
+              />
 
               <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
@@ -395,6 +447,7 @@ export default function FinanceiroJeanNovaes() {
                       value={novoTrabalho}
                       setValue={setNovoTrabalho}
                       onSave={salvarTrabalho}
+                      salvando={salvando}
                     />
                   )}
                 </div>
@@ -412,6 +465,7 @@ export default function FinanceiroJeanNovaes() {
                       value={novoCusto}
                       setValue={setNovoCusto}
                       onSave={salvarCusto}
+                      salvando={salvando}
                     />
                   )}
                 </div>
@@ -439,7 +493,13 @@ export default function FinanceiroJeanNovaes() {
 
           {activeTab === "Trabalhos" && (
             <section className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800 space-y-5">
-              <MonthHeader title="Trabalhos" month={month} setMonth={setMonth} count={`${trabalhosDoMes.length} trabalhos`} />
+              <MonthHeader
+                title="Trabalhos"
+                month={month}
+                setMonth={setMonth}
+                count={`${trabalhosDoMes.length} trabalhos`}
+              />
+
               <ListaTrabalhosCompacta
                 trabalhos={trabalhosDoMes}
                 trabalhoFinalizado={trabalhoFinalizado}
@@ -450,7 +510,13 @@ export default function FinanceiroJeanNovaes() {
 
           {activeTab === "Custos" && (
             <section className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800 space-y-5">
-              <MonthHeader title="Custos" month={month} setMonth={setMonth} count={money(stats.totalCustosMes)} />
+              <MonthHeader
+                title="Custos"
+                month={month}
+                setMonth={setMonth}
+                count={money(stats.totalCustosMes)}
+              />
+
               <ListaCustos custos={custosDoMes} total={stats.totalCustosMes} />
             </section>
           )}
@@ -475,15 +541,29 @@ export default function FinanceiroJeanNovaes() {
   );
 }
 
-function ResumoCards({ entrou, saiu, sobrou }: { entrou: number; saiu: number; sobrou: number }) {
+function ResumoCards({
+  faturado,
+  recebido,
+  saiu,
+  sobrou,
+}: {
+  faturado: number;
+  recebido: number;
+  saiu: number;
+  sobrou: number;
+}) {
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
       {[
-        ["Entrou no mês", entrou],
+        ["Fechado no mês", faturado],
+        ["Recebido no mês", recebido],
         ["Saiu no mês", saiu],
         ["Sobrou", sobrou],
       ].map(([label, value]) => (
-        <div key={String(label)} className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800">
+        <div
+          key={String(label)}
+          className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800"
+        >
           <p className="text-zinc-400 text-sm">{label}</p>
           <h2 className="text-3xl font-bold mt-2">{money(Number(value))}</h2>
         </div>
@@ -507,12 +587,19 @@ function MonthHeader({
     <div className="flex items-center justify-between gap-4">
       <div>
         <p className="text-zinc-500 text-xs uppercase tracking-wide">Mês vigente</p>
+
         <div className="flex items-center gap-3 mt-1">
-          <button className="text-zinc-500 text-xl" onClick={() => setMonth(shiftMonth(month, -1))}>‹</button>
+          <button className="text-zinc-500 text-xl" onClick={() => setMonth(shiftMonth(month, -1))}>
+            ‹
+          </button>
+
           <h3 className="text-xl md:text-2xl font-bold capitalize">
             {title} — {monthLabel(month)}
           </h3>
-          <button className="text-zinc-500 text-xl" onClick={() => setMonth(shiftMonth(month, 1))}>›</button>
+
+          <button className="text-zinc-500 text-xl" onClick={() => setMonth(shiftMonth(month, 1))}>
+            ›
+          </button>
         </div>
       </div>
 
@@ -598,8 +685,8 @@ function ListaTrabalhosCompacta({
             </div>
 
             <div className="min-w-0">
-              <h4 className="font-semibold truncate">{item.tipo_trabalho}</h4>
-              <p className="text-zinc-500 text-sm truncate">{item.cliente}</p>
+              <h4 className="font-semibold truncate">{item.tipo_trabalho || "Trabalho"}</h4>
+              <p className="text-zinc-500 text-sm truncate">{item.cliente || "Sem cliente"}</p>
             </div>
           </div>
 
@@ -629,10 +716,10 @@ function TrabalhoExpandido({
     <div className="rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden">
       <div className="p-5 border-b border-zinc-800 grid grid-cols-1 md:grid-cols-4 gap-3">
         {[
-          ["Data", new Date(trabalho.data).toLocaleDateString("pt-BR")],
-          ["Cliente", trabalho.cliente],
-          ["Tipo", trabalho.tipo_trabalho],
-          ["Valor", money(Number(trabalho.valor_cobrado || 0))],
+          ["Data do trabalho", new Date(`${trabalho.data}T00:00:00`).toLocaleDateString("pt-BR")],
+          ["Cliente", trabalho.cliente || "Sem cliente"],
+          ["Tipo", trabalho.tipo_trabalho || "Trabalho"],
+          ["Valor", money(trabalho.valor_cobrado)],
         ].map(([label, value]) => (
           <div key={label} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
             <p className="text-zinc-500 text-xs">{label}</p>
@@ -642,10 +729,11 @@ function TrabalhoExpandido({
       </div>
 
       <div className="p-5 border-b border-zinc-800 flex flex-wrap gap-3">
-        <StatusButton active={trabalho.recebido} onClick={() => toggleTrabalho(trabalho.id, "recebido")} trueText="Recebido" falseText="A receber" />
-        <StatusButton active={trabalho.entregue} onClick={() => toggleTrabalho(trabalho.id, "entregue")} trueText="Entregue" falseText="Pendente entrega" />
-        {!!trabalho.freela_valor && (
-          <StatusButton active={trabalho.freela_pago} onClick={() => toggleTrabalho(trabalho.id, "freela_pago")} trueText="Freela pago" falseText="Freela pendente" />
+        <StatusButton active={Boolean(trabalho.recebido)} onClick={() => toggleTrabalho(trabalho.id, "recebido")} trueText="Recebido" falseText="A receber" />
+        <StatusButton active={Boolean(trabalho.entregue)} onClick={() => toggleTrabalho(trabalho.id, "entregue")} trueText="Entregue" falseText="Pendente entrega" />
+
+        {Number(trabalho.freela_valor || 0) > 0 && (
+          <StatusButton active={Boolean(trabalho.freela_pago)} onClick={() => toggleTrabalho(trabalho.id, "freela_pago")} trueText="Freela pago" falseText="Freela pendente" />
         )}
       </div>
 
@@ -672,18 +760,18 @@ function TrabalhoExpandido({
                 <p className="text-zinc-500 text-sm">{custo.tipo}</p>
               </div>
 
-              <p className="font-semibold">{money(Number(custo.valor || 0))}</p>
+              <p className="font-semibold">{money(custo.valor)}</p>
             </div>
           ))}
 
-          {!!trabalho.freela_valor && (
+          {Number(trabalho.freela_valor || 0) > 0 && (
             <div className="flex items-center justify-between bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
               <div>
                 <p className="font-medium">Freela — {trabalho.freela_nome || "sem nome"}</p>
                 <p className="text-orange-300 text-sm">Custo automático do trabalho</p>
               </div>
 
-              <p className="font-semibold">{money(Number(trabalho.freela_valor || 0))}</p>
+              <p className="font-semibold">{money(trabalho.freela_valor)}</p>
             </div>
           )}
         </div>
@@ -730,6 +818,7 @@ function NovoTrabalhoForm({
   value,
   setValue,
   onSave,
+  salvando,
 }: {
   value: {
     data: string;
@@ -745,23 +834,55 @@ function NovoTrabalhoForm({
   };
   setValue: (value: any) => void;
   onSave: () => void;
+  salvando: boolean;
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input type="date" value={value.data} onChange={(e) => setValue({ ...value, data: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none" />
-        <input placeholder="Cliente" value={value.cliente} onChange={(e) => setValue({ ...value, cliente: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none" />
-        <input placeholder="Tipo de trabalho" value={value.tipo_trabalho} onChange={(e) => setValue({ ...value, tipo_trabalho: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none" />
+      <div>
+        <label className="text-zinc-400 text-sm block mb-2">Data do trabalho</label>
+        <input
+          type="date"
+          value={value.data}
+          onChange={(e) => setValue({ ...value, data: e.target.value })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+        />
       </div>
 
-      <input placeholder="Valor cobrado" value={value.valor_cobrado} onChange={(e) => setValue({ ...value, valor_cobrado: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input
+          placeholder="Cliente"
+          value={value.cliente}
+          onChange={(e) => setValue({ ...value, cliente: e.target.value })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none"
+        />
+
+        <input
+          placeholder="Tipo de trabalho"
+          value={value.tipo_trabalho}
+          onChange={(e) => setValue({ ...value, tipo_trabalho: e.target.value })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none"
+        />
+      </div>
+
+      <input
+        placeholder="Valor cobrado"
+        value={value.valor_cobrado}
+        onChange={(e) => setValue({ ...value, valor_cobrado: e.target.value })}
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <button onClick={() => setValue({ ...value, recebido: !value.recebido })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-left">
+        <button
+          onClick={() => setValue({ ...value, recebido: !value.recebido })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-left"
+        >
           Recebido? {value.recebido ? "Sim" : "Não"}
         </button>
 
-        <button onClick={() => setValue({ ...value, entregue: !value.entregue })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-left">
+        <button
+          onClick={() => setValue({ ...value, entregue: !value.entregue })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-left"
+        >
           Entregue? {value.entregue ? "Sim" : "Não"}
         </button>
       </div>
@@ -770,18 +891,42 @@ function NovoTrabalhoForm({
         <h4 className="font-semibold">Freela</h4>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input placeholder="Nome do freela" value={value.freela_nome} onChange={(e) => setValue({ ...value, freela_nome: e.target.value })} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none" />
-          <input placeholder="Valor do freela" value={value.freela_valor} onChange={(e) => setValue({ ...value, freela_valor: e.target.value })} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none" />
-          <button onClick={() => setValue({ ...value, freela_pago: !value.freela_pago })} className="bg-orange-500/15 text-orange-300 border border-orange-500/20 rounded-2xl p-4 text-left">
+          <input
+            placeholder="Nome do freela"
+            value={value.freela_nome}
+            onChange={(e) => setValue({ ...value, freela_nome: e.target.value })}
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none"
+          />
+
+          <input
+            placeholder="Valor do freela"
+            value={value.freela_valor}
+            onChange={(e) => setValue({ ...value, freela_valor: e.target.value })}
+            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none"
+          />
+
+          <button
+            onClick={() => setValue({ ...value, freela_pago: !value.freela_pago })}
+            className="bg-orange-500/15 text-orange-300 border border-orange-500/20 rounded-2xl p-4 text-left"
+          >
             Freela pago? {value.freela_pago ? "Sim" : "Não"}
           </button>
         </div>
       </div>
 
-      <textarea placeholder="Observações" value={value.observacoes} onChange={(e) => setValue({ ...value, observacoes: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full min-h-[100px]" />
+      <textarea
+        placeholder="Observações"
+        value={value.observacoes}
+        onChange={(e) => setValue({ ...value, observacoes: e.target.value })}
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full min-h-[100px]"
+      />
 
-      <button onClick={onSave} className="w-full bg-white text-black rounded-2xl p-4 font-semibold">
-        Salvar trabalho
+      <button
+        onClick={onSave}
+        disabled={salvando}
+        className="w-full bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50"
+      >
+        {salvando ? "Salvando..." : "Salvar trabalho"}
       </button>
     </div>
   );
@@ -791,6 +936,7 @@ function NovoCustoForm({
   value,
   setValue,
   onSave,
+  salvando,
 }: {
   value: {
     data: string;
@@ -801,6 +947,7 @@ function NovoCustoForm({
   };
   setValue: (value: any) => void;
   onSave: () => void;
+  salvando: boolean;
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4">
@@ -820,16 +967,43 @@ function NovoCustoForm({
         ))}
       </div>
 
-      <input type="date" value={value.data} onChange={(e) => setValue({ ...value, data: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full" />
+      <div>
+        <label className="text-zinc-400 text-sm block mb-2">Data do custo</label>
+        <input
+          type="date"
+          value={value.data}
+          onChange={(e) => setValue({ ...value, data: e.target.value })}
+          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+        />
+      </div>
 
-      <input placeholder="Nome" value={value.nome} onChange={(e) => setValue({ ...value, nome: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full" />
+      <input
+        placeholder="Nome"
+        value={value.nome}
+        onChange={(e) => setValue({ ...value, nome: e.target.value })}
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+      />
 
-      <input placeholder="Valor" value={value.valor} onChange={(e) => setValue({ ...value, valor: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full" />
+      <input
+        placeholder="Valor"
+        value={value.valor}
+        onChange={(e) => setValue({ ...value, valor: e.target.value })}
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+      />
 
-      <textarea placeholder="Observação" value={value.observacoes} onChange={(e) => setValue({ ...value, observacoes: e.target.value })} className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full min-h-[90px]" />
+      <textarea
+        placeholder="Observação"
+        value={value.observacoes}
+        onChange={(e) => setValue({ ...value, observacoes: e.target.value })}
+        className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full min-h-[90px]"
+      />
 
-      <button onClick={onSave} className="w-full bg-white text-black rounded-2xl p-4 font-semibold">
-        Salvar custo
+      <button
+        onClick={onSave}
+        disabled={salvando}
+        className="w-full bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50"
+      >
+        {salvando ? "Salvando..." : "Salvar custo"}
       </button>
     </div>
   );
@@ -869,7 +1043,7 @@ function ListaCustos({ custos, total }: { custos: Custo[]; total?: number }) {
               </p>
             </div>
 
-            <p className="font-bold">{money(Number(custo.valor || 0))}</p>
+            <p className="font-bold">{money(custo.valor)}</p>
           </div>
         ))}
       </div>
