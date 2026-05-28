@@ -49,8 +49,8 @@ type CustoForm = {
   observacoes: string;
 };
 
-const SUPABASE_URL = "https://whjwzkmfrkkletjlyiin.supabase.co";
-const SUPABASE_KEY = "sb_publishable_XmDbAw7t2R7cGXfSC6P6Sg_muVxF5wA";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 const headers = {
   apikey: SUPABASE_KEY,
