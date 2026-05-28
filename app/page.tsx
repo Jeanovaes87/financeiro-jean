@@ -66,80 +66,9 @@ function shortDate(date: string) {
   return `${day}/${month}`;
 }
 
-const initialTrabalhos: Trabalho[] = [
-  {
-    id: "t1",
-    data: "2026-05-03",
-    cliente: "Agência Viva",
-    tipo: "Making of Evento",
-    valorCobrado: 1200,
-    recebido: true,
-    entregue: true,
-    freelaNome: "",
-    freelaValor: 0,
-    freelaPago: true,
-    observacoes: "",
-  },
-  {
-    id: "t2",
-    data: "2026-05-12",
-    cliente: "Maria",
-    tipo: "Festival Cerveja",
-    valorCobrado: 2500,
-    recebido: false,
-    entregue: false,
-    freelaNome: "João",
-    freelaValor: 600,
-    freelaPago: false,
-    observacoes: "Cliente pediu cortes mais rápidos para reels.",
-  },
-  {
-    id: "t3",
-    data: "2026-05-18",
-    cliente: "Empresa XPTO",
-    tipo: "Evento Corporativo",
-    valorCobrado: 4000,
-    recebido: true,
-    entregue: true,
-    freelaNome: "",
-    freelaValor: 0,
-    freelaPago: true,
-    observacoes: "",
-  },
-  {
-    id: "t4",
-    data: "2026-05-22",
-    cliente: "Clínica Alfa",
-    tipo: "Cobertura Institucional",
-    valorCobrado: 1800,
-    recebido: false,
-    entregue: false,
-    freelaNome: "",
-    freelaValor: 0,
-    freelaPago: true,
-    observacoes: "",
-  },
-  {
-    id: "t5",
-    data: "2026-05-29",
-    cliente: "Studio Lume",
-    tipo: "Reels Bastidores",
-    valorCobrado: 950,
-    recebido: false,
-    entregue: false,
-    freelaNome: "",
-    freelaValor: 0,
-    freelaPago: true,
-    observacoes: "",
-  },
-];
+const initialTrabalhos: Trabalho[] = [];
 
-const initialCustos: Custo[] = [
-  { id: "c1", data: "2026-05-12", nome: "Posto Shell", valor: 120, tipo: "Trabalho", trabalhoId: "t2" },
-  { id: "c2", data: "2026-05-13", nome: "Adobe", valor: 89, tipo: "Empresa" },
-  { id: "c3", data: "2026-05-14", nome: "Mercado Savegnago", valor: 240, tipo: "Pessoal" },
-  { id: "c4", data: "2026-05-18", nome: "Pedágio", valor: 40, tipo: "Empresa" },
-];
+const initialCustos: Custo[] = [];
 
 export default function FinanceiroJeanNovaes() {
   const [activeTab, setActiveTab] = useState<"Dashboard" | "Trabalhos" | "Custos">("Dashboard");
