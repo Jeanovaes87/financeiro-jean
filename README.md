@@ -37,3 +37,4 @@ http://localhost:3000
 
 Esta versão salva os dados no navegador. É ótima para testar sem custo.
 Depois podemos migrar para Supabase Free se você quiser sincronizar entre celular e notebook.
+teste deploy
