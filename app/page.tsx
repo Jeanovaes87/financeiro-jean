@@ -49,8 +49,8 @@ type CustoForm = {
   observacoes: string;
 };
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
 const headers = {
   apikey: SUPABASE_KEY,
@@ -160,12 +160,26 @@ function custoToForm(custo: Custo): CustoForm {
 }
 
 async function apiGet<T>(table: string): Promise<T[]> {
-  const response = await fetch(
-    `${SUPABASE_URL}/rest/v1/${table}?select=*&order=data.asc,created_at.asc`,
-    { headers, cache: "no-store" }
-  );
+  if (!SUPABASE_URL) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL está vazia no Vercel.");
+  }
 
-  if (!response.ok) throw new Error(await response.text());
+  if (!SUPABASE_KEY) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY está vazia no Vercel.");
+  }
+
+  const endpoint = `${SUPABASE_URL}/rest/v1/${table}?select=*&order=data.asc,created_at.asc`;
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ao buscar tabela "${table}". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`);
+  }
+
   return response.json();
 }
 
@@ -238,7 +252,7 @@ export default function FinanceiroJeanNovaes() {
       if (mes) setMonth(mes);
     } catch (error) {
       console.error(error);
-      setErro("Não consegui carregar os dados. Verifique o Supabase.");
+      setErro(error instanceof Error ? error.message : "Erro desconhecido ao carregar dados.");
     } finally {
       setLoading(false);
     }
