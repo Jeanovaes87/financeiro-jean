@@ -1,7 +1,6 @@
-// ajuste deploy
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Trabalho = {
   id: string;
@@ -70,7 +69,13 @@ function money(value: number | string | null | undefined) {
 }
 
 function parseMoney(value: string) {
-  return Number(String(value || "0").replace(",", ".")) || 0;
+  const cleaned = String(value || "0")
+    .replace(/R\$/gi, "")
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+
+  return Number(cleaned) || 0;
 }
 
 function localTodayDate() {
@@ -83,6 +88,11 @@ function localTodayDate() {
 
 function todayMonthKey() {
   return localTodayDate().slice(0, 7);
+}
+
+function initialMonthKey() {
+  if (typeof window === "undefined") return todayMonthKey();
+  return localStorage.getItem("financeiro-jean-month") || todayMonthKey();
 }
 
 function getMonthKey(date?: string | null) {
@@ -219,7 +229,15 @@ async function apiDelete(table: string, id: string) {
 
 export default function FinanceiroJeanNovaes() {
   const [activeTab, setActiveTab] = useState<"Dashboard" | "Trabalhos" | "Custos">("Dashboard");
-  const [month, setMonth] = useState(todayMonthKey());
+  const [month, setMonthState] = useState(initialMonthKey());
+  const savingRef = useRef(false);
+
+  function setMonth(monthKey: string) {
+    setMonthState(monthKey);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("financeiro-jean-month", monthKey);
+    }
+  }
 
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [custos, setCustos] = useState<Custo[]>([]);
@@ -322,7 +340,10 @@ export default function FinanceiroJeanNovaes() {
   }
 
   async function criarTrabalho() {
+    if (savingRef.current) return;
+
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -353,14 +374,16 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui salvar o trabalho.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function salvarEdicaoTrabalho() {
-    if (!trabalhoEditando) return;
+    if (!trabalhoEditando || savingRef.current) return;
 
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -386,14 +409,17 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui editar o trabalho.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function excluirTrabalho(id: string) {
+    if (savingRef.current) return;
     if (!confirm("Tem certeza que deseja apagar este trabalho?")) return;
 
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -404,12 +430,16 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui apagar o trabalho.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function criarCusto() {
+    if (savingRef.current) return;
+
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -435,14 +465,16 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui salvar o custo.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function salvarEdicaoCusto() {
-    if (!custoEditando) return;
+    if (!custoEditando || savingRef.current) return;
 
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -463,14 +495,17 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui editar o custo.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
   async function excluirCusto(id: string) {
+    if (savingRef.current) return;
     if (!confirm("Tem certeza que deseja apagar este custo?")) return;
 
     try {
+      savingRef.current = true;
       setSaving(true);
       setErro("");
 
@@ -481,6 +516,7 @@ export default function FinanceiroJeanNovaes() {
       console.error(error);
       setErro("Não consegui apagar o custo.");
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
@@ -926,7 +962,8 @@ function TrabalhoFormBox({
       </div>
 
       <input
-        placeholder="Valor cobrado"
+        placeholder="Valor cobrado — ex: 700 ou 1500,50"
+        inputMode="decimal"
         value={value.valor_cobrado}
         onChange={(event) => setValue({ ...value, valor_cobrado: event.target.value })}
         className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
@@ -962,7 +999,8 @@ function TrabalhoFormBox({
           />
 
           <input
-            placeholder="Valor do freela"
+            placeholder="Valor do freela — ex: 300"
+            inputMode="decimal"
             value={value.freela_valor}
             onChange={(event) => setValue({ ...value, freela_valor: event.target.value })}
             className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none"
@@ -1062,7 +1100,8 @@ function CustoFormBox({
       />
 
       <input
-        placeholder="Valor"
+        placeholder="Valor — ex: 89,90"
+        inputMode="decimal"
         value={value.valor}
         onChange={(event) => setValue({ ...value, valor: event.target.value })}
         className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
