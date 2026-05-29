@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 type Trabalho = {
   id: string;
   data: string;
+  data_fim?: string | null;
   cliente: string | null;
   tipo_trabalho: string | null;
   valor_cobrado: number | null;
@@ -30,6 +31,7 @@ type Custo = {
 
 type TrabalhoForm = {
   data: string;
+  data_fim: string;
   cliente: string;
   tipo_trabalho: string;
   valor_cobrado: string;
@@ -120,9 +122,30 @@ function shortDate(date?: string | null) {
   return `${day}/${month}`;
 }
 
+function shortDateRange(start?: string | null, end?: string | null) {
+  if (!end || end === start) return shortDate(start);
+  return `${shortDate(start)}–${shortDate(end)}`;
+}
+
+function monthRange(month: string) {
+  const start = `${month}-01`;
+  const date = new Date(`${start}T00:00:00`);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  const endKey = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+  return { start, end: endKey };
+}
+
+function trabalhoApareceNoMes(trabalho: Trabalho, month: string) {
+  const { start, end } = monthRange(month);
+  const dataInicio = trabalho.data;
+  const dataFim = trabalho.data_fim || trabalho.data;
+  return dataInicio <= end && dataFim >= start;
+}
+
 function emptyTrabalhoForm(date = localTodayDate()): TrabalhoForm {
   return {
     data: date,
+    data_fim: "",
     cliente: "",
     tipo_trabalho: "",
     valor_cobrado: "",
@@ -138,6 +161,7 @@ function emptyTrabalhoForm(date = localTodayDate()): TrabalhoForm {
 function trabalhoToForm(trabalho: Trabalho): TrabalhoForm {
   return {
     data: trabalho.data || localTodayDate(),
+    data_fim: trabalho.data_fim || "",
     cliente: trabalho.cliente || "",
     tipo_trabalho: trabalho.tipo_trabalho || "",
     valor_cobrado: String(trabalho.valor_cobrado ?? ""),
@@ -283,7 +307,7 @@ export default function FinanceiroJeanNovaes() {
 
   const trabalhosDoMes = useMemo(() => {
     return trabalhos
-      .filter((item) => getMonthKey(item.data) === month)
+      .filter((item) => trabalhoApareceNoMes(item, month))
       .sort((a, b) => String(a.data).localeCompare(String(b.data)));
   }, [trabalhos, month]);
 
@@ -354,6 +378,7 @@ export default function FinanceiroJeanNovaes() {
 
       const body = {
         data: trabalhoForm.data,
+        data_fim: trabalhoForm.data_fim || null,
         cliente: trabalhoForm.cliente.trim() || "Sem cliente",
         tipo_trabalho: trabalhoForm.tipo_trabalho.trim() || "Trabalho",
         valor_cobrado: parseMoney(trabalhoForm.valor_cobrado),
@@ -389,6 +414,7 @@ export default function FinanceiroJeanNovaes() {
 
       const body = {
         data: trabalhoForm.data,
+        data_fim: trabalhoForm.data_fim || null,
         cliente: trabalhoForm.cliente.trim() || "Sem cliente",
         tipo_trabalho: trabalhoForm.tipo_trabalho.trim() || "Trabalho",
         valor_cobrado: parseMoney(trabalhoForm.valor_cobrado),
@@ -633,14 +659,14 @@ export default function FinanceiroJeanNovaes() {
                 <TrabalhosBox
                   month={month}
                   setMonth={setMonth}
-                  trabalhos=trabalhos={trabalhosDoMes}
+                  trabalhos={trabalhosDoMes}
                   trabalhoFinalizado={trabalhoFinalizado}
                   onEdit={abrirEdicaoTrabalho}
                 />
 
                 <CustosBox
                   title="Últimos custos"
-                  custos=custos={custosDoMes}
+                  custos={custosDoMes}
                   onEdit={abrirEdicaoCusto}
                 />
               </section>
@@ -852,7 +878,7 @@ function ListaTrabalhos({
         >
           <div className="flex items-center gap-4 min-w-0">
             <div className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm font-semibold shrink-0">
-              {shortDate(item.data)}
+              {shortDateRange(item.data, item.data_fim)}
             </div>
 
             <div className="min-w-0">
@@ -935,14 +961,26 @@ function TrabalhoFormBox({
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
       <h3 className="text-xl font-bold">{title}</h3>
 
-      <div>
-        <label className="text-zinc-400 text-sm block mb-2">Data do trabalho</label>
-        <input
-          type="date"
-          value={value.data}
-          onChange={(event) => setValue({ ...value, data: event.target.value })}
-          className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-zinc-400 text-sm block mb-2">Data inicial</label>
+          <input
+            type="date"
+            value={value.data}
+            onChange={(event) => setValue({ ...value, data: event.target.value })}
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+          />
+        </div>
+
+        <div>
+          <label className="text-zinc-400 text-sm block mb-2">Data final (opcional)</label>
+          <input
+            type="date"
+            value={value.data_fim}
+            onChange={(event) => setValue({ ...value, data_fim: event.target.value })}
+            className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
