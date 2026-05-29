@@ -576,7 +576,7 @@ export default function FinanceiroJeanNovaes() {
   return (
     <main className="min-h-screen bg-zinc-950 text-white pb-28 md:pb-8 md:flex">
       <aside className="hidden md:flex w-72 border-r border-zinc-800 p-6 flex-col gap-3 sticky top-0 h-screen">
-        <h2 className="text-xl font-bold mb-6">Financeiro Jean Novaes</h2>
+        <h2 className="text-xl font-bold mb-6">TESTE DEPLOY NOVO</h2>
 
         {navItems.map((item) => (
           <button
