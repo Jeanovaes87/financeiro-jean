@@ -887,7 +887,10 @@ function ListaTrabalhos({
             </div>
           </div>
 
-          <span className="text-zinc-600 text-lg shrink-0">editar</span>
+          <div className="flex items-center gap-4 shrink-0">
+            <span className="font-bold whitespace-nowrap">{money(item.valor_cobrado || 0)}</span>
+            <span className="text-zinc-600 text-lg">editar</span>
+          </div>
         </button>
       ))}
     </div>
@@ -974,7 +977,6 @@ function TrabalhoFormBox({
 
         <div>
           <label className="text-zinc-400 text-sm block mb-2">Data final (opcional)</label>
-        
           <input
             type="date"
             value={value.data_fim}
