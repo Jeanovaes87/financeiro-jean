@@ -423,6 +423,8 @@ export default function FinanceiroJeanNovaes() {
   async function criarTrabalho() {
     if (savingRef.current) return;
 
+    let agendaWindow: Window | null = null;
+
     try {
       savingRef.current = true;
       setSaving(true);
@@ -432,6 +434,8 @@ export default function FinanceiroJeanNovaes() {
         setErro("Preencha a data do trabalho.");
         return;
       }
+
+      agendaWindow = window.open("", "_blank");
 
       const body = {
         data: trabalhoForm.data,
@@ -464,10 +468,17 @@ export default function FinanceiroJeanNovaes() {
         });
       }
 
+      if (agendaWindow) {
+        agendaWindow.location.href = googleAgendaUrl(trabalhoCriado);
+      } else {
+        window.open(googleAgendaUrl(trabalhoCriado), "_blank", "noopener,noreferrer");
+      }
+
       setNovoTrabalhoAberto(false);
       setTrabalhoForm(emptyTrabalhoForm(trabalhoForm.data));
       await carregarDados(getMonthKey(body.data));
     } catch (error) {
+      if (agendaWindow) agendaWindow.close();
       console.error(error);
       setErro("Não consegui salvar o trabalho.");
     } finally {
@@ -753,6 +764,7 @@ export default function FinanceiroJeanNovaes() {
                       onSave={criarTrabalho}
                       saving={saving}
                       permitirCustosLivres
+                      saveLabel="Salvar + Agenda"
                     />
                   )}
                 </div>
@@ -1110,6 +1122,7 @@ function TrabalhoFormBox({
   saving,
   onDelete,
   permitirCustosLivres = false,
+  saveLabel = "Salvar",
 }: {
   title: string;
   value: TrabalhoForm;
@@ -1119,6 +1132,7 @@ function TrabalhoFormBox({
   onDelete?: () => void;
   contexto?: "geral" | "trabalho";
   permitirCustosLivres?: boolean;
+  saveLabel?: string;
 }) {
   function adicionarCustoRascunho() {
     setValue({
@@ -1353,7 +1367,7 @@ function TrabalhoFormBox({
           disabled={saving}
           className="flex-1 bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50"
         >
-          {saving ? "Salvando..." : "Salvar"}
+          {saving ? "Salvando..." : saveLabel}
         </button>
       </div>
     </div>
