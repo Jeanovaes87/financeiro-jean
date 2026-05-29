@@ -135,6 +135,44 @@ function shortDateRange(start?: string | null, end?: string | null) {
   return `${shortDate(start)}–${shortDate(end)}`;
 }
 
+function googleDate(date?: string | null) {
+  if (!date) return "";
+  return date.replaceAll("-", "");
+}
+
+function addOneDay(date?: string | null) {
+  if (!date) return "";
+  const base = new Date(`${date}T00:00:00`);
+  base.setDate(base.getDate() + 1);
+  return `${base.getFullYear()}${String(base.getMonth() + 1).padStart(2, "0")}${String(base.getDate()).padStart(2, "0")}`;
+}
+
+function googleAgendaUrl(trabalho: TrabalhoForm | Trabalho) {
+  const titulo = `${trabalho.tipo_trabalho || "Trabalho"} — ${trabalho.cliente || "Sem cliente"}`;
+  const inicio = googleDate(trabalho.data);
+  const fim = addOneDay(trabalho.data_fim || trabalho.data);
+
+  const detalhes = [
+    `Cliente: ${trabalho.cliente || "Sem cliente"}`,
+    `Tipo de trabalho: ${trabalho.tipo_trabalho || "Trabalho"}`,
+    `Valor: ${money(Number(trabalho.valor_cobrado || 0))}`,
+    trabalho.freela_nome ? `Freela: ${trabalho.freela_nome}` : "",
+    Number(trabalho.freela_valor || 0) > 0 ? `Valor freela: ${money(Number(trabalho.freela_valor || 0))}` : "",
+    trabalho.observacoes ? `Observações: ${trabalho.observacoes}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: titulo,
+    dates: `${inicio}/${fim}`,
+    details: detalhes,
+  });
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 function monthRange(month: string) {
   const start = `${month}-01`;
   const date = new Date(`${start}T00:00:00`);
@@ -785,6 +823,15 @@ export default function FinanceiroJeanNovaes() {
                 saving={saving}
                 onDelete={() => excluirTrabalho(trabalhoEditando.id)}
               />
+
+              <a
+                href={googleAgendaUrl(trabalhoForm)}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-center bg-cyan-500/15 border border-cyan-400/30 text-cyan-100 rounded-2xl p-4 font-semibold hover:bg-cyan-500/25 transition"
+              >
+                📅 Adicionar à Agenda Google
+              </a>
 
               <CustosDoTrabalhoBox
                 trabalho={trabalhoEditando}
