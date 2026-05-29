@@ -633,14 +633,14 @@ export default function FinanceiroJeanNovaes() {
                 <TrabalhosBox
                   month={month}
                   setMonth={setMonth}
-                  trabalhos={trabalhosDoMes.slice(0, 5)}
+                  trabalhos=trabalhos={trabalhosDoMes}
                   trabalhoFinalizado={trabalhoFinalizado}
                   onEdit={abrirEdicaoTrabalho}
                 />
 
                 <CustosBox
                   title="Últimos custos"
-                  custos={custosDoMes.slice(0, 5)}
+                  custos=custos={custosDoMes}
                   onEdit={abrirEdicaoCusto}
                 />
               </section>
