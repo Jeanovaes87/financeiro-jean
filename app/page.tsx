@@ -876,21 +876,28 @@ function ListaTrabalhos({
             trabalhoFinalizado(item) ? "opacity-50" : "opacity-100"
           }`}
         >
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
             <div className="bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-sm font-semibold shrink-0">
               {shortDateRange(item.data, item.data_fim)}
             </div>
 
-            <div className="min-w-0">
-              <h4 className="font-semibold truncate">{item.tipo_trabalho || "Trabalho"}</h4>
-              <p className="text-zinc-500 text-sm truncate">{item.cliente || "Sem cliente"}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{item.tipo_trabalho || "Trabalho"}</p>
+              <p className="text-sm text-zinc-400 truncate">{item.cliente || "Sem cliente"}</p>
+            </div>
+
+            <div className="text-right shrink-0">
+              <p className="font-bold whitespace-nowrap">{money(item.valor_cobrado || 0)}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 shrink-0">
-            <span className="font-bold whitespace-nowrap">{money(item.valor_cobrado || 0)}</span>
-            <span className="text-zinc-600 text-lg">editar</span>
-          </div>
+          <span
+            className="text-zinc-500 text-xl shrink-0"
+            title="Editar"
+            aria-label="Editar"
+          >
+            ✎
+          </span>
         </button>
       ))}
     </div>
