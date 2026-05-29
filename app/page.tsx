@@ -29,6 +29,13 @@ type Custo = {
   created_at?: string;
 };
 
+type CustoRascunho = {
+  id: string;
+  nome: string;
+  valor: string;
+  observacoes: string;
+};
+
 type TrabalhoForm = {
   data: string;
   data_fim: string;
@@ -41,6 +48,7 @@ type TrabalhoForm = {
   freela_valor: string;
   freela_pago: boolean;
   observacoes: string;
+  custos_rascunho: CustoRascunho[];
 };
 
 type CustoForm = {
@@ -155,6 +163,7 @@ function emptyTrabalhoForm(date = localTodayDate()): TrabalhoForm {
     freela_valor: "",
     freela_pago: false,
     observacoes: "",
+    custos_rascunho: [],
   };
 }
 
@@ -171,6 +180,7 @@ function trabalhoToForm(trabalho: Trabalho): TrabalhoForm {
     freela_valor: String(trabalho.freela_valor ?? ""),
     freela_pago: Boolean(trabalho.freela_pago),
     observacoes: trabalho.observacoes || "",
+    custos_rascunho: [],
   };
 }
 
@@ -391,7 +401,22 @@ export default function FinanceiroJeanNovaes() {
         observacoes: trabalhoForm.observacoes,
       };
 
-      await apiInsert<Trabalho>("trabalhos", body);
+      const trabalhoCriado = await apiInsert<Trabalho>("trabalhos", body);
+
+      const custosValidos = trabalhoForm.custos_rascunho.filter(
+        (custo) => custo.nome.trim() || parseMoney(custo.valor) > 0
+      );
+
+      for (const custo of custosValidos) {
+        await apiInsert<Custo>("custos", {
+          data: trabalhoForm.data,
+          nome: custo.nome.trim() || "Custo do trabalho",
+          valor: parseMoney(custo.valor),
+          tipo: "Trabalho",
+          trabalho_id: trabalhoCriado.id,
+          observacoes: custo.observacoes,
+        });
+      }
 
       setNovoTrabalhoAberto(false);
       setTrabalhoForm(emptyTrabalhoForm(trabalhoForm.data));
@@ -683,6 +708,7 @@ export default function FinanceiroJeanNovaes() {
                       setValue={setTrabalhoForm}
                       onSave={criarTrabalho}
                       saving={saving}
+                      permitirCustosLivres
                     />
                   )}
                 </div>
@@ -1030,6 +1056,7 @@ function TrabalhoFormBox({
   onSave,
   saving,
   onDelete,
+  permitirCustosLivres = false,
 }: {
   title: string;
   value: TrabalhoForm;
@@ -1038,7 +1065,42 @@ function TrabalhoFormBox({
   saving: boolean;
   onDelete?: () => void;
   contexto?: "geral" | "trabalho";
+  permitirCustosLivres?: boolean;
 }) {
+  function adicionarCustoRascunho() {
+    setValue({
+      ...value,
+      custos_rascunho: [
+        ...value.custos_rascunho,
+        { id: crypto.randomUUID(), nome: "", valor: "", observacoes: "" },
+      ],
+    });
+  }
+
+  function atualizarCustoRascunho(id: string, campo: keyof CustoRascunho, novoValor: string) {
+    setValue({
+      ...value,
+      custos_rascunho: value.custos_rascunho.map((custo) =>
+        custo.id === id ? { ...custo, [campo]: novoValor } : custo
+      ),
+    });
+  }
+
+  function removerCustoRascunho(id: string) {
+    setValue({
+      ...value,
+      custos_rascunho: value.custos_rascunho.filter((custo) => custo.id !== id),
+    });
+  }
+
+  const totalCustosRascunho = value.custos_rascunho.reduce(
+    (sum, custo) => sum + parseMoney(custo.valor),
+    0
+  );
+
+  const lucroPrevistoRascunho =
+    parseMoney(value.valor_cobrado) - parseMoney(value.freela_valor) - totalCustosRascunho;
+
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
       <h3 className="text-xl font-bold">{title}</h3>
@@ -1135,6 +1197,83 @@ function TrabalhoFormBox({
           </button>
         </div>
       </div>
+
+      {permitirCustosLivres && (
+        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h4 className="font-semibold">Custos do trabalho</h4>
+              <p className="text-zinc-500 text-sm mt-1">
+                Gasolina, pedágio, hotel, comida e outros custos previstos.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={adicionarCustoRascunho}
+              className="bg-white text-black rounded-2xl px-4 py-3 font-semibold shrink-0"
+            >
+              + Custo
+            </button>
+          </div>
+
+          {value.custos_rascunho.length === 0 && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-zinc-500 text-sm">
+              Nenhum custo adicionado ainda.
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {value.custos_rascunho.map((custo) => (
+              <div key={custo.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto] gap-3">
+                  <input
+                    placeholder="Nome do custo — ex: gasolina, hotel, pedágio"
+                    value={custo.nome}
+                    onChange={(event) => atualizarCustoRascunho(custo.id, "nome", event.target.value)}
+                    className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none"
+                  />
+
+                  <input
+                    placeholder="Valor"
+                    inputMode="decimal"
+                    value={custo.valor}
+                    onChange={(event) => atualizarCustoRascunho(custo.id, "valor", event.target.value)}
+                    className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => removerCustoRascunho(custo.id)}
+                    className="bg-red-500/15 text-red-300 border border-red-500/20 rounded-2xl px-4 py-3"
+                  >
+                    Apagar
+                  </button>
+                </div>
+
+                <input
+                  placeholder="Observação opcional"
+                  value={custo.observacoes}
+                  onChange={(event) => atualizarCustoRascunho(custo.id, "observacoes", event.target.value)}
+                  className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 outline-none w-full"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+              <p className="text-zinc-500 text-sm">Total de custos previstos</p>
+              <p className="font-bold text-xl mt-1">{money(totalCustosRascunho)}</p>
+            </div>
+
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+              <p className="text-zinc-500 text-sm">Lucro previsto</p>
+              <p className="font-bold text-xl mt-1">{money(lucroPrevistoRascunho)}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <textarea
         placeholder="Observações"
