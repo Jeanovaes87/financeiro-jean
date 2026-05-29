@@ -335,20 +335,25 @@ export default function FinanceiroJeanNovaes() {
       .filter((t) => Boolean(t.recebido))
       .reduce((sum, t) => sum + Number(t.valor_cobrado || 0), 0);
 
-    const custosGerais = custosDoMes.reduce((sum, c) => sum + Number(c.valor || 0), 0);
+    const custosTrabalho = custosDoMes
+      .filter((c) => c.tipo === "Trabalho")
+      .reduce((sum, c) => sum + Number(c.valor || 0), 0);
+
+    const custosPessoais = custosDoMes
+      .filter((c) => c.tipo === "Pessoal")
+      .reduce((sum, c) => sum + Number(c.valor || 0), 0);
 
     const freelasPagos = trabalhosDoMes
       .filter((t) => Boolean(t.freela_pago))
       .reduce((sum, t) => sum + Number(t.freela_valor || 0), 0);
 
-    const saiu = custosGerais + freelasPagos;
+    const custosTrabalhoTotal = custosTrabalho + freelasPagos;
 
     return {
       fechado,
       recebido,
-      saiu,
-      sobrou: recebido - saiu,
-      custosGerais,
+      custosTrabalho: custosTrabalhoTotal,
+      custosPessoais,
     };
   }, [trabalhosDoMes, custosDoMes]);
 
@@ -841,16 +846,16 @@ function ResumoCards({
   stats: {
     fechado: number;
     recebido: number;
-    saiu: number;
-    sobrou: number;
+    custosTrabalho: number;
+    custosPessoais: number;
   };
 }) {
   return (
     <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
       <InfoCard label="Fechado no mês" value={money(stats.fechado)} />
       <InfoCard label="Recebido no mês" value={money(stats.recebido)} />
-      <InfoCard label="Saiu no mês" value={money(stats.saiu)} />
-      <InfoCard label="Sobrou" value={money(stats.sobrou)} />
+      <InfoCard label="Custos Trabalho" value={money(stats.custosTrabalho)} />
+      <InfoCard label="Custos Pessoais" value={money(stats.custosPessoais)} />
     </section>
   );
 }
