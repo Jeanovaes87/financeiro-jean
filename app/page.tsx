@@ -651,19 +651,16 @@ export default function FinanceiroJeanNovaes() {
   const navItems: Array<typeof activeTab> = ["Dashboard", "Trabalhos", "Custos"];
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-950 via-zinc-950 to-black text-white pb-28 md:pb-8 md:flex">
-      <aside className="hidden md:flex w-72 border-r border-zinc-800 p-6 flex-col gap-3 sticky top-0 h-screen">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold leading-tight">Financeiro Jean Novaes</h2>
-          <p className="text-zinc-500 text-sm mt-1">Audiovisual</p>
-        </div>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#123b4a_0%,#071016_38%,#030507_100%)] text-white pb-28 md:pb-8 md:flex">
+      <aside className="hidden md:flex w-72 border-r border-cyan-800/40 p-6 flex-col gap-3 sticky top-0 h-screen bg-[#081117]/95">
+        <h2 className="text-xl font-bold mb-6">Financeiro Jean Novaes</h2>
 
         {navItems.map((item) => (
           <button
             key={item}
             onClick={() => setActiveTab(item)}
             className={`rounded-2xl p-4 text-left ${
-              activeTab === item ? "bg-white text-black font-semibold" : "bg-zinc-900 border border-zinc-800"
+              activeTab === item ? "bg-white text-black font-semibold" : "bg-zinc-900 border border-cyan-900/40"
             }`}
           >
             {item}
@@ -674,14 +671,9 @@ export default function FinanceiroJeanNovaes() {
       <div className="flex-1 p-4 md:p-8">
         <div className="max-w-6xl mx-auto space-y-6">
           <header>
-            <div className="space-y-2">
-              <p className="text-zinc-500 text-sm uppercase tracking-[0.25em]">
-                Controle privado
-              </p>
-              <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
-                Financeiro Jean Novaes Audiovisual
-              </h1>
-            </div>
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-[0_0_18px_rgba(34,211,238,0.15)]">
+              Financeiro Jean Novaes Audiovisual
+            </h1>
           </header>
 
           {erro && (
@@ -691,7 +683,7 @@ export default function FinanceiroJeanNovaes() {
           )}
 
           {loading && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-zinc-400">
+            <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/70">
               Carregando dados...
             </div>
           )}
@@ -704,9 +696,7 @@ export default function FinanceiroJeanNovaes() {
                 <div className="space-y-3">
                   <button
                     onClick={abrirNovoTrabalho}
-                    className="w-full bg-white text-black rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-white/5 hover:scale-[1.01] active:scale-[0.99] transition"
-                  >
-                    + Novo Trabalho
+                    className="w-full bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition">+ Novo Trabalho
                   </button>
 
                   {novoTrabalhoAberto && (
@@ -724,9 +714,7 @@ export default function FinanceiroJeanNovaes() {
                 <div className="space-y-3">
                   <button
                     onClick={abrirNovoCusto}
-                    className="w-full bg-zinc-900/80 border border-zinc-800 rounded-3xl p-5 shadow-xl shadow-black/20 text-lg font-semibold"
-                  >
-                    + Novo Custo
+                    className="w-full bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition">+ Novo Custo
                   </button>
 
                   {novoCustoAberto && (
@@ -760,7 +748,7 @@ export default function FinanceiroJeanNovaes() {
           )}
 
           {activeTab === "Trabalhos" && (
-            <section className="bg-zinc-900/80 rounded-3xl p-6 border border-zinc-800 shadow-xl shadow-black/20 backdrop-blur space-y-5">
+            <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
               <MonthHeader title="Trabalhos" month={month} setMonth={setMonth} count={`${trabalhosDoMes.length} trabalhos`} />
 
               <ListaTrabalhos
@@ -772,7 +760,7 @@ export default function FinanceiroJeanNovaes() {
           )}
 
           {activeTab === "Custos" && (
-            <section className="bg-zinc-900/80 rounded-3xl p-6 border border-zinc-800 shadow-xl shadow-black/20 backdrop-blur space-y-5">
+            <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
               <MonthHeader title="Custos" month={month} setMonth={setMonth} count={money(stats.custosGerais)} />
 
               <ListaCustos custos={custosDoMes} onEdit={abrirEdicaoCusto} total={stats.custosGerais} />
@@ -831,12 +819,12 @@ export default function FinanceiroJeanNovaes() {
         </div>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-950/95 border-t border-zinc-800 p-4 flex items-center justify-around backdrop-blur">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#061016] border-t border-cyan-900/40 p-4 flex items-center justify-around">
         {navItems.map((item) => (
           <button
             key={item}
             onClick={() => setActiveTab(item)}
-            className={`flex flex-col items-center gap-1 ${activeTab === item ? "text-white" : "text-zinc-400"}`}
+            className={`flex flex-col items-center gap-1 ${activeTab === item ? "text-white" : "text-cyan-100/55"}`}
           >
             <span className="text-lg">●</span>
             <span className="text-xs">{item}</span>
@@ -869,9 +857,10 @@ function ResumoCards({
 
 function InfoCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-zinc-900/80 rounded-3xl p-6 border border-zinc-800 shadow-xl shadow-black/20 backdrop-blur">
-      <p className="text-zinc-400 text-sm">{label}</p>
-      <h2 className="text-3xl font-bold mt-2 tracking-tight">{value}</h2>
+    <div className="relative overflow-hidden bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20">
+      <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500/60" />
+      <p className="text-cyan-100/70 text-sm">{label}</p>
+      <h2 className="text-3xl font-bold mt-2">{value}</h2>
     </div>
   );
 }
@@ -890,10 +879,10 @@ function MonthHeader({
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <p className="text-zinc-400 text-xs uppercase tracking-wide">Mês vigente</p>
+        <p className="text-cyan-100/55 text-xs uppercase tracking-wide">Mês vigente</p>
 
         <div className="flex items-center gap-3 mt-1">
-          <button className="text-zinc-400 text-xl" onClick={() => setMonth(shiftMonth(month, -1))}>
+          <button className="text-cyan-100/55 text-xl" onClick={() => setMonth(shiftMonth(month, -1))}>
             ‹
           </button>
 
@@ -901,13 +890,13 @@ function MonthHeader({
             {title} — {monthLabel(month)}
           </h3>
 
-          <button className="text-zinc-400 text-xl" onClick={() => setMonth(shiftMonth(month, 1))}>
+          <button className="text-cyan-100/55 text-xl" onClick={() => setMonth(shiftMonth(month, 1))}>
             ›
           </button>
         </div>
       </div>
 
-      {count && <p className="text-zinc-400 text-sm">{count}</p>}
+      {count && <p className="text-cyan-100/55 text-sm">{count}</p>}
     </div>
   );
 }
@@ -926,7 +915,7 @@ function TrabalhosBox({
   onEdit: (trabalho: Trabalho) => void;
 }) {
   return (
-    <div className="bg-zinc-900/80 rounded-3xl p-6 border border-zinc-800 shadow-xl shadow-black/20 backdrop-blur space-y-5">
+    <div className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
       <MonthHeader title="Trabalhos" month={month} setMonth={setMonth} count={`${trabalhos.length} trabalhos`} />
       <ListaTrabalhos trabalhos={trabalhos} trabalhoFinalizado={trabalhoFinalizado} onEdit={onEdit} />
     </div>
@@ -943,10 +932,10 @@ function CustosBox({
   onEdit: (custo: Custo) => void;
 }) {
   return (
-    <div className="bg-zinc-900/80 rounded-3xl p-6 border border-zinc-800 shadow-xl shadow-black/20 backdrop-blur space-y-5">
+    <div className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold">{title}</h3>
-        <p className="text-zinc-400 text-sm">{custos.length} registros</p>
+        <p className="text-cyan-100/55 text-sm">{custos.length} registros</p>
       </div>
 
       <ListaCustos custos={custos} onEdit={onEdit} />
@@ -965,30 +954,30 @@ function ListaTrabalhos({
 }) {
   if (!trabalhos.length) {
     return (
-      <div className="bg-black/30 border border-zinc-800 rounded-2xl p-6 text-zinc-400">
+      <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-6 text-cyan-100/55">
         Nenhum trabalho neste mês.
       </div>
     );
   }
 
   return (
-    <div className="divide-y divide-zinc-800 border border-zinc-800 rounded-2xl overflow-hidden">
+    <div className="divide-y divide-zinc-800 border border-cyan-900/40 rounded-2xl overflow-hidden">
       {trabalhos.map((item) => (
         <button
           key={item.id}
           onClick={() => onEdit(item)}
-          className={`w-full flex items-center justify-between gap-4 p-4 text-left hover:bg-zinc-800/60 ${
+          className={`w-full flex items-center justify-between gap-4 p-4 text-left hover:bg-cyan-950/35 ${
             trabalhoFinalizado(item) ? "opacity-50" : "opacity-100"
           }`}
         >
           <div className="flex items-center gap-4 min-w-0 flex-1">
-            <div className="bg-black/30 border border-zinc-800 rounded-xl px-3 py-2 text-sm font-semibold shrink-0">
+            <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-xl px-3 py-2 text-sm font-semibold shrink-0">
               {shortDateRange(item.data, item.data_fim)}
             </div>
 
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium truncate">{item.tipo_trabalho || "Trabalho"}</p>
-              <p className="text-sm text-zinc-400 truncate">{item.cliente || "Sem cliente"}</p>
+              <p className="text-sm text-cyan-100/70 truncate">{item.cliente || "Sem cliente"}</p>
             </div>
 
             <div className="text-right shrink-0">
@@ -997,7 +986,7 @@ function ListaTrabalhos({
           </div>
 
           <span
-            className="text-zinc-400 text-xl shrink-0"
+            className="text-cyan-100/55 text-xl shrink-0"
             title="Editar"
             aria-label="Editar"
           >
@@ -1020,7 +1009,7 @@ function ListaCustos({
 }) {
   if (!custos.length) {
     return (
-      <div className="bg-black/30 border border-zinc-800 rounded-2xl p-6 text-zinc-400">
+      <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-6 text-cyan-100/55">
         Nenhum custo neste mês.
       </div>
     );
@@ -1028,16 +1017,16 @@ function ListaCustos({
 
   return (
     <>
-      <div className="divide-y divide-zinc-800 border border-zinc-800 rounded-2xl overflow-hidden">
+      <div className="divide-y divide-zinc-800 border border-cyan-900/40 rounded-2xl overflow-hidden">
         {custos.map((custo) => (
           <button
             key={custo.id}
             onClick={() => onEdit(custo)}
-            className="w-full flex items-center justify-between gap-4 p-4 bg-zinc-950 text-left hover:bg-zinc-800/60"
+            className="w-full flex items-center justify-between gap-4 p-4 bg-[#061016] text-left hover:bg-cyan-950/35"
           >
             <div>
               <h4 className="font-semibold">{custo.nome || "Custo"}</h4>
-              <p className="text-zinc-400 text-sm mt-1">
+              <p className="text-cyan-100/55 text-sm mt-1">
                 {shortDate(custo.data)} • {custo.tipo || "Empresa"}
               </p>
             </div>
@@ -1048,8 +1037,8 @@ function ListaCustos({
       </div>
 
       {typeof total === "number" && (
-        <div className="bg-black/30 border border-zinc-800 rounded-2xl p-5 flex items-center justify-between">
-          <p className="text-zinc-400 text-sm">Total do mês</p>
+        <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-5 flex items-center justify-between">
+          <p className="text-cyan-100/55 text-sm">Total do mês</p>
           <p className="font-bold text-2xl">{money(total)}</p>
         </div>
       )}
@@ -1110,27 +1099,27 @@ function TrabalhoFormBox({
     parseMoney(value.valor_cobrado) - parseMoney(value.freela_valor) - totalCustosRascunho;
 
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-5 shadow-xl shadow-black/20 space-y-5">
+    <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-5">
       <h3 className="text-xl font-bold">{title}</h3>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-zinc-400 text-sm block mb-2">Data inicial</label>
+          <label className="text-cyan-100/70 text-sm block mb-2">Data inicial</label>
           <input
             type="date"
             value={value.data}
             onChange={(event) => setValue({ ...value, data: event.target.value })}
-            className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+            className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
           />
         </div>
 
         <div>
-          <label className="text-zinc-400 text-sm block mb-2">Data final (opcional)</label>
+          <label className="text-cyan-100/70 text-sm block mb-2">Data final (opcional)</label>
           <input
             type="date"
             value={value.data_fim}
             onChange={(event) => setValue({ ...value, data_fim: event.target.value })}
-            className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+            className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
           />
         </div>
       </div>
@@ -1140,14 +1129,14 @@ function TrabalhoFormBox({
           placeholder="Cliente"
           value={value.cliente}
           onChange={(event) => setValue({ ...value, cliente: event.target.value })}
-          className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
         />
 
         <input
           placeholder="Tipo de trabalho"
           value={value.tipo_trabalho}
           onChange={(event) => setValue({ ...value, tipo_trabalho: event.target.value })}
-          className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
         />
       </div>
 
@@ -1156,14 +1145,14 @@ function TrabalhoFormBox({
         inputMode="decimal"
         value={value.valor_cobrado}
         onChange={(event) => setValue({ ...value, valor_cobrado: event.target.value })}
-        className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button
           type="button"
           onClick={() => setValue({ ...value, recebido: !value.recebido })}
-          className="bg-black/30 border border-zinc-800 rounded-2xl p-4 text-left"
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-left"
         >
           Recebido? {value.recebido ? "Sim" : "Não"}
         </button>
@@ -1171,13 +1160,13 @@ function TrabalhoFormBox({
         <button
           type="button"
           onClick={() => setValue({ ...value, entregue: !value.entregue })}
-          className="bg-black/30 border border-zinc-800 rounded-2xl p-4 text-left"
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-left"
         >
           Entregue? {value.entregue ? "Sim" : "Não"}
         </button>
       </div>
 
-      <div className="bg-black/30 border border-zinc-800 rounded-2xl p-5 space-y-4">
+      <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-5 space-y-4">
         <h4 className="font-semibold">Freela</h4>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1185,7 +1174,7 @@ function TrabalhoFormBox({
             placeholder="Nome do freela"
             value={value.freela_nome}
             onChange={(event) => setValue({ ...value, freela_nome: event.target.value })}
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+            className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 outline-none"
           />
 
           <input
@@ -1193,7 +1182,7 @@ function TrabalhoFormBox({
             inputMode="decimal"
             value={value.freela_valor}
             onChange={(event) => setValue({ ...value, freela_valor: event.target.value })}
-            className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+            className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 outline-none"
           />
 
           <button
@@ -1207,11 +1196,11 @@ function TrabalhoFormBox({
       </div>
 
       {permitirCustosLivres && (
-        <div className="bg-black/30 border border-zinc-800 rounded-2xl p-5 space-y-4">
+        <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <h4 className="font-semibold">Custos do trabalho</h4>
-              <p className="text-zinc-400 text-sm mt-1">
+              <p className="text-cyan-100/55 text-sm mt-1">
                 Gasolina, pedágio, hotel, comida e outros custos previstos.
               </p>
             </div>
@@ -1226,20 +1215,20 @@ function TrabalhoFormBox({
           </div>
 
           {value.custos_rascunho.length === 0 && (
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 text-zinc-400 text-sm">
+            <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/55 text-sm">
               Nenhum custo adicionado ainda.
             </div>
           )}
 
           <div className="space-y-3">
             {value.custos_rascunho.map((custo) => (
-              <div key={custo.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3">
+              <div key={custo.id} className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto] gap-3">
                   <input
                     placeholder="Nome do custo — ex: gasolina, hotel, pedágio"
                     value={custo.nome}
                     onChange={(event) => atualizarCustoRascunho(custo.id, "nome", event.target.value)}
-                    className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+                    className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                   />
 
                   <input
@@ -1247,7 +1236,7 @@ function TrabalhoFormBox({
                     inputMode="decimal"
                     value={custo.valor}
                     onChange={(event) => atualizarCustoRascunho(custo.id, "valor", event.target.value)}
-                    className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition"
+                    className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                   />
 
                   <button
@@ -1263,20 +1252,20 @@ function TrabalhoFormBox({
                   placeholder="Observação opcional"
                   value={custo.observacoes}
                   onChange={(event) => atualizarCustoRascunho(custo.id, "observacoes", event.target.value)}
-                  className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+                  className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
                 />
               </div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-              <p className="text-zinc-400 text-sm">Total de custos previstos</p>
+            <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
+              <p className="text-cyan-100/55 text-sm">Total de custos previstos</p>
               <p className="font-bold text-xl mt-1">{money(totalCustosRascunho)}</p>
             </div>
 
-            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
-              <p className="text-zinc-400 text-sm">Lucro previsto</p>
+            <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
+              <p className="text-cyan-100/55 text-sm">Lucro previsto</p>
               <p className="font-bold text-xl mt-1">{money(lucroPrevistoRascunho)}</p>
             </div>
           </div>
@@ -1287,7 +1276,7 @@ function TrabalhoFormBox({
         placeholder="Observações"
         value={value.observacoes}
         onChange={(event) => setValue({ ...value, observacoes: event.target.value })}
-        className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full min-h-[100px]"
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[100px]"
       />
 
       <div className="flex gap-3">
@@ -1330,11 +1319,11 @@ function CustosDoTrabalhoBox({
   const freela = Number(trabalho.freela_valor || 0);
 
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-5 shadow-xl shadow-black/20 space-y-4">
+    <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-xl font-bold">Custos do trabalho</h3>
-          <p className="text-zinc-400 text-sm mt-1">
+          <p className="text-cyan-100/55 text-sm mt-1">
             Gasolina, pedágio, hotel, comida e outros custos deste trabalho.
           </p>
         </div>
@@ -1350,7 +1339,7 @@ function CustosDoTrabalhoBox({
 
       <div className="space-y-3">
         {custos.length === 0 && freela === 0 && (
-          <div className="bg-black/30 border border-zinc-800 rounded-2xl p-4 text-zinc-400">
+          <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/55">
             Nenhum custo vinculado a este trabalho.
           </div>
         )}
@@ -1360,11 +1349,11 @@ function CustosDoTrabalhoBox({
             key={custo.id}
             type="button"
             onClick={() => onEdit(custo)}
-            className="w-full flex items-center justify-between gap-4 bg-black/30 border border-zinc-800 rounded-2xl p-4 text-left hover:bg-zinc-800/60"
+            className="w-full flex items-center justify-between gap-4 bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-left hover:bg-cyan-950/35"
           >
             <div className="min-w-0">
               <p className="font-medium truncate">{custo.nome || "Custo"}</p>
-              <p className="text-zinc-400 text-sm truncate">{shortDate(custo.data)} • custo do trabalho</p>
+              <p className="text-cyan-100/55 text-sm truncate">{shortDate(custo.data)} • custo do trabalho</p>
             </div>
 
             <p className="font-bold whitespace-nowrap">{money(custo.valor)}</p>
@@ -1384,13 +1373,13 @@ function CustosDoTrabalhoBox({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="bg-black/30 border border-zinc-800 rounded-2xl p-4">
-          <p className="text-zinc-400 text-sm">Custos livres</p>
+        <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
+          <p className="text-cyan-100/55 text-sm">Custos livres</p>
           <p className="text-2xl font-bold mt-1">{money(totalCustosLivres)}</p>
         </div>
 
-        <div className="bg-black/30 border border-zinc-800 rounded-2xl p-4">
-          <p className="text-zinc-400 text-sm">Custos + freela</p>
+        <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
+          <p className="text-cyan-100/55 text-sm">Custos + freela</p>
           <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + freela)}</p>
         </div>
       </div>
@@ -1416,12 +1405,12 @@ function CustoFormBox({
   contexto?: "geral" | "trabalho";
 }) {
   return (
-    <div className="bg-zinc-900/80 border border-zinc-800 rounded-3xl p-5 shadow-xl shadow-black/20 space-y-4">
+    <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-4">
       <h3 className="text-xl font-bold">{title}</h3>
 
       {contexto === "trabalho" ? (
-        <div className="bg-black/30 border border-zinc-800 rounded-2xl p-4">
-          <p className="text-zinc-400 text-sm">Este custo ficará vinculado ao trabalho.</p>
+        <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
+          <p className="text-cyan-100/70 text-sm">Este custo ficará vinculado ao trabalho.</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
@@ -1431,7 +1420,7 @@ function CustoFormBox({
               key={tipo}
               onClick={() => setValue({ ...value, tipo })}
               className={`rounded-2xl p-4 font-medium ${
-                value.tipo === tipo ? "bg-white text-black" : "bg-black/30 border border-zinc-800"
+                value.tipo === tipo ? "bg-white text-black" : "bg-[#061016]/80 border border-cyan-900/40"
               }`}
             >
               {tipo}
@@ -1441,12 +1430,12 @@ function CustoFormBox({
       )}
 
       <div>
-        <label className="text-zinc-400 text-sm block mb-2">Data do custo</label>
+        <label className="text-cyan-100/70 text-sm block mb-2">Data do custo</label>
         <input
           type="date"
           value={value.data}
           onChange={(event) => setValue({ ...value, data: event.target.value })}
-          className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
         />
       </div>
 
@@ -1454,7 +1443,7 @@ function CustoFormBox({
         placeholder="Nome"
         value={value.nome}
         onChange={(event) => setValue({ ...value, nome: event.target.value })}
-        className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
       />
 
       <input
@@ -1462,14 +1451,14 @@ function CustoFormBox({
         inputMode="decimal"
         value={value.valor}
         onChange={(event) => setValue({ ...value, valor: event.target.value })}
-        className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full"
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
       />
 
       <textarea
         placeholder="Observação"
         value={value.observacoes}
         onChange={(event) => setValue({ ...value, observacoes: event.target.value })}
-        className="bg-black/30 border border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-white/10 transition w-full min-h-[90px]"
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[90px]"
       />
 
       <div className="flex gap-3">
@@ -1507,12 +1496,12 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 p-4 overflow-y-auto backdrop-blur-sm">
-      <div className="max-w-3xl mx-auto bg-black/30 border border-zinc-800 rounded-3xl p-4 md:p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/70 z-50 p-4 overflow-y-auto">
+      <div className="max-w-3xl mx-auto bg-[#061016]/80 border border-cyan-900/40 rounded-3xl p-4 md:p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">{title}</h2>
 
-          <button onClick={onClose} className="bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-2">
+          <button onClick={onClose} className="bg-zinc-900 border border-cyan-900/40 rounded-2xl px-4 py-2">
             Fechar
           </button>
         </div>
