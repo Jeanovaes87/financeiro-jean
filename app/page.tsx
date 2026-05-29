@@ -349,11 +349,14 @@ export default function FinanceiroJeanNovaes() {
 
     const custosTrabalhoTotal = custosTrabalho + freelasPagos;
 
+    const custosGerais = custosTrabalhoTotal + custosPessoais;
+
     return {
       fechado,
       recebido,
       custosTrabalho: custosTrabalhoTotal,
       custosPessoais,
+      custosGerais,
     };
   }, [trabalhosDoMes, custosDoMes]);
 
@@ -848,6 +851,7 @@ function ResumoCards({
     recebido: number;
     custosTrabalho: number;
     custosPessoais: number;
+    custosGerais: number;
   };
 }) {
   return (
