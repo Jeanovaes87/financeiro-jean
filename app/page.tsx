@@ -974,7 +974,7 @@ function TrabalhoFormBox({
 
         <div>
           <label className="text-zinc-400 text-sm block mb-2">Data final (opcional)</label>
-          <p>TESTE JEAN 123</p>
+        
           <input
             type="date"
             value={value.data_fim}
