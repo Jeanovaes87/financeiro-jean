@@ -45,7 +45,7 @@ type TrabalhoForm = {
 
 type CustoForm = {
   data: string;
-  tipo: "Empresa" | "Pessoal";
+  tipo: "Empresa" | "Pessoal" | "Trabalho";
   nome: string;
   valor: string;
   observacoes: string;
@@ -187,7 +187,7 @@ function emptyCustoForm(date = localTodayDate()): CustoForm {
 function custoToForm(custo: Custo): CustoForm {
   return {
     data: custo.data || localTodayDate(),
-    tipo: custo.tipo === "Pessoal" ? "Pessoal" : "Empresa",
+    tipo: custo.tipo === "Pessoal" ? "Pessoal" : custo.tipo === "Trabalho" ? "Trabalho" : "Empresa",
     nome: custo.nome || "",
     valor: String(custo.valor ?? ""),
     observacoes: custo.observacoes || "",
@@ -278,6 +278,7 @@ export default function FinanceiroJeanNovaes() {
 
   const [trabalhoEditando, setTrabalhoEditando] = useState<Trabalho | null>(null);
   const [custoEditando, setCustoEditando] = useState<Custo | null>(null);
+  const [custoTrabalhoAbertoId, setCustoTrabalhoAbertoId] = useState<string | null>(null);
 
   async function carregarDados(mes?: string) {
     try {
@@ -479,6 +480,7 @@ export default function FinanceiroJeanNovaes() {
         nome: custoForm.nome.trim() || "Custo",
         valor: parseMoney(custoForm.valor),
         tipo: custoForm.tipo,
+        trabalho_id: null,
         observacoes: custoForm.observacoes,
       };
 
@@ -490,6 +492,42 @@ export default function FinanceiroJeanNovaes() {
     } catch (error) {
       console.error(error);
       setErro("Não consegui salvar o custo.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  async function criarCustoDoTrabalho(trabalho: Trabalho) {
+    if (savingRef.current) return;
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setErro("");
+
+      if (!custoForm.data) {
+        setErro("Preencha a data do custo.");
+        return;
+      }
+
+      const body = {
+        data: custoForm.data,
+        nome: custoForm.nome.trim() || "Custo do trabalho",
+        valor: parseMoney(custoForm.valor),
+        tipo: "Trabalho",
+        trabalho_id: trabalho.id,
+        observacoes: custoForm.observacoes,
+      };
+
+      await apiInsert<Custo>("custos", body);
+
+      setCustoTrabalhoAbertoId(null);
+      setCustoForm(emptyCustoForm(trabalho.data));
+      await carregarDados(getMonthKey(trabalho.data));
+    } catch (error) {
+      console.error(error);
+      setErro("Não consegui salvar o custo do trabalho.");
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -567,8 +605,22 @@ export default function FinanceiroJeanNovaes() {
 
   function abrirNovoCusto() {
     setCustoEditando(null);
+    setCustoTrabalhoAbertoId(null);
     setNovoCustoAberto((value) => !value);
     setCustoForm(emptyCustoForm(`${month}-01`));
+  }
+
+  function abrirNovoCustoDoTrabalho(trabalho: Trabalho) {
+    setCustoEditando(null);
+    setNovoCustoAberto(false);
+    setCustoTrabalhoAbertoId((atual) => atual === trabalho.id ? null : trabalho.id);
+    setCustoForm({
+      data: trabalho.data,
+      tipo: "Trabalho",
+      nome: "",
+      valor: "",
+      observacoes: "",
+    });
   }
 
   const navItems: Array<typeof activeTab> = ["Dashboard", "Trabalhos", "Custos"];
@@ -704,6 +756,24 @@ export default function FinanceiroJeanNovaes() {
                 onDelete={() => excluirTrabalho(trabalhoEditando.id)}
               />
 
+              <CustosDoTrabalhoBox
+                trabalho={trabalhoEditando}
+                custos={custosDoTrabalho(trabalhoEditando.id)}
+                onAdd={() => abrirNovoCustoDoTrabalho(trabalhoEditando)}
+                onEdit={abrirEdicaoCusto}
+              />
+
+              {custoTrabalhoAbertoId === trabalhoEditando.id && (
+                <CustoFormBox
+                  title="Novo custo do trabalho"
+                  value={custoForm}
+                  setValue={setCustoForm}
+                  onSave={() => criarCustoDoTrabalho(trabalhoEditando)}
+                  saving={saving}
+                  contexto="trabalho"
+                />
+              )}
+
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <InfoCard label="Custos" value={money(totalCustosTrabalho(trabalhoEditando))} />
                 <InfoCard label="Lucro previsto" value={money(lucroPrevisto(trabalhoEditando))} />
@@ -720,6 +790,7 @@ export default function FinanceiroJeanNovaes() {
                 onSave={salvarEdicaoCusto}
                 saving={saving}
                 onDelete={() => excluirCusto(custoEditando.id)}
+                contexto={custoForm.tipo === "Trabalho" ? "trabalho" : "geral"}
               />
             </Modal>
           )}
@@ -966,6 +1037,7 @@ function TrabalhoFormBox({
   onSave: () => void;
   saving: boolean;
   onDelete?: () => void;
+  contexto?: "geral" | "trabalho";
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-5">
@@ -1096,6 +1168,89 @@ function TrabalhoFormBox({
   );
 }
 
+function CustosDoTrabalhoBox({
+  trabalho,
+  custos,
+  onAdd,
+  onEdit,
+}: {
+  trabalho: Trabalho;
+  custos: Custo[];
+  onAdd: () => void;
+  onEdit: (custo: Custo) => void;
+}) {
+  const totalCustosLivres = custos.reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
+  const freela = Number(trabalho.freela_valor || 0);
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-xl font-bold">Custos do trabalho</h3>
+          <p className="text-zinc-500 text-sm mt-1">
+            Gasolina, pedágio, hotel, comida e outros custos deste trabalho.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onAdd}
+          className="bg-white text-black rounded-2xl px-4 py-3 font-semibold shrink-0"
+        >
+          + Custo
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {custos.length === 0 && freela === 0 && (
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-zinc-500">
+            Nenhum custo vinculado a este trabalho.
+          </div>
+        )}
+
+        {custos.map((custo) => (
+          <button
+            key={custo.id}
+            type="button"
+            onClick={() => onEdit(custo)}
+            className="w-full flex items-center justify-between gap-4 bg-zinc-950 border border-zinc-800 rounded-2xl p-4 text-left hover:bg-zinc-900"
+          >
+            <div className="min-w-0">
+              <p className="font-medium truncate">{custo.nome || "Custo"}</p>
+              <p className="text-zinc-500 text-sm truncate">{shortDate(custo.data)} • custo do trabalho</p>
+            </div>
+
+            <p className="font-bold whitespace-nowrap">{money(custo.valor)}</p>
+          </button>
+        ))}
+
+        {freela > 0 && (
+          <div className="flex items-center justify-between gap-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
+            <div className="min-w-0">
+              <p className="font-medium truncate">Freela — {trabalho.freela_nome || "sem nome"}</p>
+              <p className="text-orange-300 text-sm">Custo automático do trabalho</p>
+            </div>
+
+            <p className="font-bold whitespace-nowrap">{money(freela)}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+          <p className="text-zinc-500 text-sm">Custos livres</p>
+          <p className="text-2xl font-bold mt-1">{money(totalCustosLivres)}</p>
+        </div>
+
+        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+          <p className="text-zinc-500 text-sm">Custos + freela</p>
+          <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + freela)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CustoFormBox({
   title,
   value,
@@ -1103,6 +1258,7 @@ function CustoFormBox({
   onSave,
   saving,
   onDelete,
+  contexto = "geral",
 }: {
   title: string;
   value: CustoForm;
@@ -1110,25 +1266,32 @@ function CustoFormBox({
   onSave: () => void;
   saving: boolean;
   onDelete?: () => void;
+  contexto?: "geral" | "trabalho";
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-5 space-y-4">
       <h3 className="text-xl font-bold">{title}</h3>
 
-      <div className="grid grid-cols-2 gap-3">
-        {(["Empresa", "Pessoal"] as const).map((tipo) => (
-          <button
-            type="button"
-            key={tipo}
-            onClick={() => setValue({ ...value, tipo })}
-            className={`rounded-2xl p-4 font-medium ${
-              value.tipo === tipo ? "bg-white text-black" : "bg-zinc-950 border border-zinc-800"
-            }`}
-          >
-            {tipo}
-          </button>
-        ))}
-      </div>
+      {contexto === "trabalho" ? (
+        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+          <p className="text-zinc-400 text-sm">Este custo ficará vinculado ao trabalho.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {(["Empresa", "Pessoal"] as const).map((tipo) => (
+            <button
+              type="button"
+              key={tipo}
+              onClick={() => setValue({ ...value, tipo })}
+              className={`rounded-2xl p-4 font-medium ${
+                value.tipo === tipo ? "bg-white text-black" : "bg-zinc-950 border border-zinc-800"
+              }`}
+            >
+              {tipo}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div>
         <label className="text-zinc-400 text-sm block mb-2">Data do custo</label>
