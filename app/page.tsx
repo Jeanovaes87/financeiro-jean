@@ -29,6 +29,24 @@ type Custo = {
   created_at?: string;
 };
 
+type CustoFixo = {
+  id: string;
+  nome: string | null;
+  valor: number | null;
+  tipo: "Empresa" | "Pessoal" | string | null;
+  observacoes?: string | null;
+  ativo?: boolean | null;
+  created_at?: string;
+};
+
+type CustoFixoForm = {
+  nome: string;
+  valor: string;
+  tipo: "Empresa" | "Pessoal";
+  observacoes: string;
+  ativo: boolean;
+};
+
 type CustoRascunho = {
   id: string;
   nome: string;
@@ -242,6 +260,26 @@ function custoToForm(custo: Custo): CustoForm {
   };
 }
 
+function emptyCustoFixoForm(): CustoFixoForm {
+  return {
+    nome: "",
+    valor: "",
+    tipo: "Empresa",
+    observacoes: "",
+    ativo: true,
+  };
+}
+
+function custoFixoToForm(custo: CustoFixo): CustoFixoForm {
+  return {
+    nome: custo.nome || "",
+    valor: String(custo.valor ?? ""),
+    tipo: custo.tipo === "Pessoal" ? "Pessoal" : "Empresa",
+    observacoes: custo.observacoes || "",
+    ativo: custo.ativo !== false,
+  };
+}
+
 async function apiGet<T>(table: string): Promise<T[]> {
   if (!SUPABASE_URL) {
     throw new Error("NEXT_PUBLIC_SUPABASE_URL está vazia no Vercel.");
@@ -261,6 +299,30 @@ async function apiGet<T>(table: string): Promise<T[]> {
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Erro ao buscar tabela "${table}". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`);
+  }
+
+  return response.json();
+}
+
+async function apiGetCustosFixos(): Promise<CustoFixo[]> {
+  if (!SUPABASE_URL) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL está vazia no Vercel.");
+  }
+
+  if (!SUPABASE_KEY) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY está vazia no Vercel.");
+  }
+
+  const endpoint = `${SUPABASE_URL}/rest/v1/custos_fixos?select=*&order=created_at.asc`;
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ao buscar tabela "custos_fixos". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`);
   }
 
   return response.json();
@@ -300,7 +362,7 @@ async function apiDelete(table: string, id: string) {
 }
 
 export default function FinanceiroJeanNovaes() {
-  const [activeTab, setActiveTab] = useState<"Dashboard" | "Trabalhos" | "Custos">("Dashboard");
+  const [activeTab, setActiveTab] = useState<"Dashboard" | "Trabalhos" | "Custos" | "Custos Fixos">("Dashboard");
   const [month, setMonthState] = useState(initialMonthKey());
   const savingRef = useRef(false);
 
@@ -313,6 +375,7 @@ export default function FinanceiroJeanNovaes() {
 
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
   const [custos, setCustos] = useState<Custo[]>([]);
+  const [custosFixos, setCustosFixos] = useState<CustoFixo[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -320,12 +383,15 @@ export default function FinanceiroJeanNovaes() {
 
   const [novoTrabalhoAberto, setNovoTrabalhoAberto] = useState(false);
   const [novoCustoAberto, setNovoCustoAberto] = useState(false);
+  const [novoCustoFixoAberto, setNovoCustoFixoAberto] = useState(false);
 
   const [trabalhoForm, setTrabalhoForm] = useState<TrabalhoForm>(emptyTrabalhoForm());
   const [custoForm, setCustoForm] = useState<CustoForm>(emptyCustoForm());
+  const [custoFixoForm, setCustoFixoForm] = useState<CustoFixoForm>(emptyCustoFixoForm());
 
   const [trabalhoEditando, setTrabalhoEditando] = useState<Trabalho | null>(null);
   const [custoEditando, setCustoEditando] = useState<Custo | null>(null);
+  const [custoFixoEditando, setCustoFixoEditando] = useState<CustoFixo | null>(null);
   const [custoTrabalhoAbertoId, setCustoTrabalhoAbertoId] = useState<string | null>(null);
 
   async function carregarDados(mes?: string) {
@@ -333,13 +399,15 @@ export default function FinanceiroJeanNovaes() {
       setErro("");
       setLoading(true);
 
-      const [trabalhosData, custosData] = await Promise.all([
+      const [trabalhosData, custosData, custosFixosData] = await Promise.all([
         apiGet<Trabalho>("trabalhos"),
         apiGet<Custo>("custos"),
+        apiGetCustosFixos(),
       ]);
 
       setTrabalhos(trabalhosData);
       setCustos(custosData);
+      setCustosFixos(custosFixosData);
 
       if (mes) setMonth(mes);
     } catch (error) {
@@ -374,7 +442,7 @@ export default function FinanceiroJeanNovaes() {
       .reduce((sum, t) => sum + Number(t.valor_cobrado || 0), 0);
 
     const custosTrabalho = custosDoMes
-      .filter((c) => c.tipo === "Trabalho")
+      .filter((c) => c.tipo === "Trabalho" || c.tipo === "Empresa")
       .reduce((sum, c) => sum + Number(c.valor || 0), 0);
 
     const custosPessoais = custosDoMes
@@ -667,6 +735,160 @@ export default function FinanceiroJeanNovaes() {
     }
   }
 
+  async function criarCustoFixo() {
+    if (savingRef.current) return;
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setErro("");
+
+      const body = {
+        nome: custoFixoForm.nome.trim() || "Custo fixo",
+        valor: parseMoney(custoFixoForm.valor),
+        tipo: custoFixoForm.tipo,
+        observacoes: custoFixoForm.observacoes,
+        ativo: custoFixoForm.ativo,
+      };
+
+      await apiInsert<CustoFixo>("custos_fixos", body);
+
+      setNovoCustoFixoAberto(false);
+      setCustoFixoForm(emptyCustoFixoForm());
+      await carregarDados();
+    } catch (error) {
+      console.error(error);
+      setErro("Não consegui salvar o custo fixo.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  async function salvarEdicaoCustoFixo() {
+    if (!custoFixoEditando || savingRef.current) return;
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setErro("");
+
+      const body = {
+        nome: custoFixoForm.nome.trim() || "Custo fixo",
+        valor: parseMoney(custoFixoForm.valor),
+        tipo: custoFixoForm.tipo,
+        observacoes: custoFixoForm.observacoes,
+        ativo: custoFixoForm.ativo,
+      };
+
+      await apiUpdate<CustoFixo>("custos_fixos", custoFixoEditando.id, body);
+
+      setCustoFixoEditando(null);
+      setCustoFixoForm(emptyCustoFixoForm());
+      await carregarDados();
+    } catch (error) {
+      console.error(error);
+      setErro("Não consegui editar o custo fixo.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  async function excluirCustoFixo(id: string) {
+    if (savingRef.current) return;
+    if (!confirm("Tem certeza que deseja apagar este custo fixo?")) return;
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setErro("");
+
+      await apiDelete("custos_fixos", id);
+      setCustoFixoEditando(null);
+      setCustoFixoForm(emptyCustoFixoForm());
+      await carregarDados();
+    } catch (error) {
+      console.error(error);
+      setErro("Não consegui apagar o custo fixo.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
+  function abrirNovoCustoFixo() {
+    setCustoFixoEditando(null);
+    setNovoCustoFixoAberto((value) => !value);
+    setCustoFixoForm(emptyCustoFixoForm());
+  }
+
+  function abrirEdicaoCustoFixo(custo: CustoFixo) {
+    setNovoCustoFixoAberto(false);
+    setCustoFixoEditando(custo);
+    setCustoFixoForm(custoFixoToForm(custo));
+  }
+
+  function custosFixosJaImportadosNoMes() {
+    const ativos = custosFixos.filter((custo) => custo.ativo !== false);
+
+    if (!ativos.length) return false;
+
+    return ativos.every((fixo) =>
+      custosDoMes.some((custo) =>
+        custo.nome === fixo.nome &&
+        custo.tipo === fixo.tipo &&
+        custo.observacoes?.includes(`[fixo:${fixo.id}]`)
+      )
+    );
+  }
+
+  async function importarCustosFixosDoMes() {
+    if (savingRef.current) return;
+
+    const ativos = custosFixos.filter((custo) => custo.ativo !== false);
+
+    if (!ativos.length) {
+      setErro("Cadastre pelo menos um custo fixo ativo antes de importar.");
+      return;
+    }
+
+    try {
+      savingRef.current = true;
+      setSaving(true);
+      setErro("");
+
+      const dataDoMes = `${month}-01`;
+
+      for (const fixo of ativos) {
+        const jaExiste = custosDoMes.some((custo) =>
+          custo.nome === fixo.nome &&
+          custo.tipo === fixo.tipo &&
+          custo.observacoes?.includes(`[fixo:${fixo.id}]`)
+        );
+
+        if (jaExiste) continue;
+
+        await apiInsert<Custo>("custos", {
+          data: dataDoMes,
+          nome: fixo.nome || "Custo fixo",
+          valor: Number(fixo.valor || 0),
+          tipo: fixo.tipo === "Pessoal" ? "Pessoal" : "Empresa",
+          trabalho_id: null,
+          observacoes: `${fixo.observacoes || ""}${fixo.observacoes ? "\n" : ""}[fixo:${fixo.id}]`,
+        });
+      }
+
+      await carregarDados(month);
+    } catch (error) {
+      console.error(error);
+      setErro("Não consegui importar os custos fixos.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
   function abrirEdicaoTrabalho(trabalho: Trabalho) {
     setNovoTrabalhoAberto(false);
     setTrabalhoEditando(trabalho);
@@ -705,7 +927,7 @@ export default function FinanceiroJeanNovaes() {
     });
   }
 
-  const navItems: Array<typeof activeTab> = ["Dashboard", "Trabalhos", "Custos"];
+  const navItems: Array<typeof activeTab> = ["Dashboard", "Trabalhos", "Custos", "Custos Fixos"];
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#123b4a_0%,#071016_38%,#030507_100%)] text-white pb-28 md:pb-8 md:flex">
@@ -787,6 +1009,14 @@ export default function FinanceiroJeanNovaes() {
                 </div>
               </section>
 
+              <CustosFixosImportBox
+                month={month}
+                custosFixos={custosFixos}
+                jaImportados={custosFixosJaImportadosNoMes()}
+                onImport={importarCustosFixosDoMes}
+                saving={saving}
+              />
+
               <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <TrabalhosBox
                   month={month}
@@ -822,6 +1052,38 @@ export default function FinanceiroJeanNovaes() {
               <MonthHeader title="Custos" month={month} setMonth={setMonth} count={money(stats.custosGerais)} />
 
               <ListaCustos custos={custosDoMes} onEdit={abrirEdicaoCusto} total={stats.custosGerais} />
+            </section>
+          )}
+
+          {activeTab === "Custos Fixos" && (
+            <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h3 className="text-2xl font-bold">Custos Fixos</h3>
+                  <p className="text-cyan-100/55 text-sm mt-1">
+                    Modelo mensal para despesas recorrentes. Você importa para cada mês quando quiser.
+                  </p>
+                </div>
+
+                <button
+                  onClick={abrirNovoCustoFixo}
+                  className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition"
+                >
+                  + Novo Custo Fixo
+                </button>
+              </div>
+
+              {novoCustoFixoAberto && (
+                <CustoFixoFormBox
+                  title="Novo Custo Fixo"
+                  value={custoFixoForm}
+                  setValue={setCustoFixoForm}
+                  onSave={criarCustoFixo}
+                  saving={saving}
+                />
+              )}
+
+              <ListaCustosFixos custos={custosFixos} onEdit={abrirEdicaoCustoFixo} />
             </section>
           )}
 
@@ -867,6 +1129,19 @@ export default function FinanceiroJeanNovaes() {
                 <InfoCard label="Custos" value={money(totalCustosTrabalho(trabalhoEditando))} />
                 <InfoCard label="Lucro previsto" value={money(lucroPrevisto(trabalhoEditando))} />
               </div>
+            </Modal>
+          )}
+
+          {custoFixoEditando && (
+            <Modal title="Editar Custo Fixo" onClose={() => setCustoFixoEditando(null)}>
+              <CustoFixoFormBox
+                title="Editar Custo Fixo"
+                value={custoFixoForm}
+                setValue={setCustoFixoForm}
+                onSave={salvarEdicaoCustoFixo}
+                saving={saving}
+                onDelete={() => excluirCustoFixo(custoFixoEditando.id)}
+              />
             </Modal>
           )}
 
@@ -1452,6 +1727,204 @@ function CustosDoTrabalhoBox({
           <p className="text-cyan-100/55 text-sm">Custos + freela</p>
           <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + freela)}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function CustosFixosImportBox({
+  month,
+  custosFixos,
+  jaImportados,
+  onImport,
+  saving,
+}: {
+  month: string;
+  custosFixos: CustoFixo[];
+  jaImportados: boolean;
+  onImport: () => void;
+  saving: boolean;
+}) {
+  const ativos = custosFixos.filter((custo) => custo.ativo !== false);
+  const totalEmpresa = ativos
+    .filter((custo) => custo.tipo !== "Pessoal")
+    .reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
+  const totalPessoal = ativos
+    .filter((custo) => custo.tipo === "Pessoal")
+    .reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
+
+  if (!ativos.length) {
+    return (
+      <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20">
+        <p className="text-cyan-100/70 text-sm">Custos fixos</p>
+        <p className="font-semibold mt-1">Cadastre seus custos fixos para importar todo mês com um clique.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <p className="text-cyan-100/70 text-sm">Custos fixos de {monthLabel(month)}</p>
+        <h3 className="font-bold text-xl mt-1">
+          {ativos.length} itens • Empresa {money(totalEmpresa)} • Pessoal {money(totalPessoal)}
+        </h3>
+        <p className="text-cyan-100/55 text-sm mt-1">
+          {jaImportados ? "Custos fixos já importados para este mês." : "Importe para lançar estes custos no mês selecionado."}
+        </p>
+      </div>
+
+      <button
+        onClick={onImport}
+        disabled={saving || jaImportados}
+        className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold shadow-lg shadow-cyan-950/40 disabled:opacity-50 hover:from-cyan-600 hover:to-teal-500 transition"
+      >
+        {jaImportados ? "Já importado" : `Importar para ${monthLabel(month)}`}
+      </button>
+    </div>
+  );
+}
+
+function ListaCustosFixos({
+  custos,
+  onEdit,
+}: {
+  custos: CustoFixo[];
+  onEdit: (custo: CustoFixo) => void;
+}) {
+  if (!custos.length) {
+    return (
+      <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-6 text-cyan-100/55">
+        Nenhum custo fixo cadastrado.
+      </div>
+    );
+  }
+
+  const total = custos
+    .filter((custo) => custo.ativo !== false)
+    .reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="divide-y divide-cyan-900/40 border border-cyan-900/40 rounded-2xl overflow-hidden">
+        {custos.map((custo) => (
+          <button
+            key={custo.id}
+            onClick={() => onEdit(custo)}
+            className={`w-full flex items-center justify-between gap-4 p-4 text-left hover:bg-cyan-950/35 transition ${
+              custo.ativo === false ? "opacity-45" : ""
+            }`}
+          >
+            <div className="min-w-0">
+              <h4 className="font-semibold truncate">{custo.nome || "Custo fixo"}</h4>
+              <p className="text-cyan-100/55 text-sm mt-1">
+                {custo.tipo === "Pessoal" ? "Pessoal" : "Empresa"} {custo.ativo === false ? "• inativo" : ""}
+              </p>
+            </div>
+
+            <div className="text-right shrink-0">
+              <p className="font-bold">{money(custo.valor)}</p>
+              <p className="text-cyan-100/45 text-sm">✎</p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-5 flex items-center justify-between">
+        <p className="text-cyan-100/55 text-sm">Total fixo ativo</p>
+        <p className="font-bold text-2xl">{money(total)}</p>
+      </div>
+    </div>
+  );
+}
+
+function CustoFixoFormBox({
+  title,
+  value,
+  setValue,
+  onSave,
+  saving,
+  onDelete,
+}: {
+  title: string;
+  value: CustoFixoForm;
+  setValue: (value: CustoFixoForm) => void;
+  onSave: () => void;
+  saving: boolean;
+  onDelete?: () => void;
+}) {
+  return (
+    <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-4">
+      <h3 className="text-xl font-bold">{title}</h3>
+
+      <div className="grid grid-cols-2 gap-3">
+        {(["Empresa", "Pessoal"] as const).map((tipo) => (
+          <button
+            type="button"
+            key={tipo}
+            onClick={() => setValue({ ...value, tipo })}
+            className={`rounded-2xl p-4 font-medium ${
+              value.tipo === tipo ? "bg-white text-black" : "bg-[#061016]/80 border border-cyan-900/40"
+            }`}
+          >
+            {tipo}
+          </button>
+        ))}
+      </div>
+
+      <input
+        placeholder="Nome do custo fixo"
+        value={value.nome}
+        onChange={(event) => setValue({ ...value, nome: event.target.value })}
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+      />
+
+      <input
+        placeholder="Valor"
+        value={value.valor}
+        onChange={(event) => setValue({ ...value, valor: event.target.value })}
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+      />
+
+      <textarea
+        placeholder="Observação"
+        value={value.observacoes}
+        onChange={(event) => setValue({ ...value, observacoes: event.target.value })}
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[90px]"
+      />
+
+      <button
+        type="button"
+        onClick={() => setValue({ ...value, ativo: !value.ativo })}
+        className={`w-full rounded-2xl p-4 text-left font-medium ${
+          value.ativo
+            ? "bg-green-500/15 text-green-300 border border-green-500/20"
+            : "bg-zinc-500/15 text-zinc-300 border border-zinc-500/20"
+        }`}
+      >
+        Status: {value.ativo ? "Ativo" : "Inativo"}
+      </button>
+
+      <div className="flex gap-3">
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={saving}
+            className="w-1/3 bg-red-500/15 text-red-300 border border-red-500/20 rounded-2xl p-4 font-semibold disabled:opacity-50"
+          >
+            Apagar
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Salvar"}
+        </button>
       </div>
     </div>
   );
