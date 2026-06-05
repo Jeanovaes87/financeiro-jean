@@ -1274,6 +1274,19 @@ function CustosBox({
   custos: Custo[];
   onEdit: (custo: Custo) => void;
 }) {
+  const [mostrarTodosCustos, setMostrarTodosCustos] = useState(false);
+
+  const custosOrdenados = [...custos].sort((a, b) => {
+    const dataB = String(b.data || b.created_at || "");
+    const dataA = String(a.data || a.created_at || "");
+
+    if (dataB !== dataA) return dataB.localeCompare(dataA);
+
+    return String(b.created_at || "").localeCompare(String(a.created_at || ""));
+  });
+
+  const custosVisiveis = mostrarTodosCustos ? custosOrdenados : custosOrdenados.slice(0, 5);
+
   return (
     <div className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
       <div className="flex items-center justify-between">
@@ -1281,7 +1294,17 @@ function CustosBox({
         <p className="text-cyan-100/55 text-sm">{custos.length} registros</p>
       </div>
 
-      <ListaCustos custos={custos} onEdit={onEdit} />
+      <ListaCustos custos={custosVisiveis} onEdit={onEdit} />
+
+      {custosOrdenados.length > 5 && (
+        <button
+          type="button"
+          onClick={() => setMostrarTodosCustos((value) => !value)}
+          className="w-full bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100 font-semibold hover:bg-cyan-950/35 transition"
+        >
+          {mostrarTodosCustos ? "Ocultar custos" : `Ver todos os custos (${custosOrdenados.length})`}
+        </button>
+      )}
     </div>
   );
 }
