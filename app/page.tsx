@@ -78,7 +78,9 @@ type CustoForm = {
   observacoes: string;
 };
 
-const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim().replace(/\/$/, "");
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || "")
+  .trim()
+  .replace(/\/$/, "");
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
 const headers = {
@@ -177,7 +179,10 @@ function googleAgendaUrl(trabalho: TrabalhoForm | Trabalho) {
     `Valor: ${money(Number(trabalho.valor_cobrado || 0))}`,
     "freelas_rascunho" in trabalho && trabalho.freelas_rascunho.length
       ? `Freelas: ${trabalho.freelas_rascunho
-          .map((freela) => `${freela.nome || "Sem nome"} — ${money(parseMoney(freela.valor))}`)
+          .map(
+            (freela) =>
+              `${freela.nome || "Sem nome"} — ${money(parseMoney(freela.valor))}`,
+          )
           .join(", ")}`
       : "freela_nome" in trabalho && trabalho.freela_nome
         ? `Freela: ${trabalho.freela_nome}`
@@ -240,13 +245,15 @@ function trabalhoToForm(trabalho: Trabalho, freelas: Freela[]): TrabalhoForm {
 
   const freelaAntigo =
     freelasDoTrabalho.length === 0 && Number(trabalho.freela_valor || 0) > 0
-      ? [{
-          id: crypto.randomUUID(),
-          nome: trabalho.freela_nome || "",
-          valor: String(trabalho.freela_valor ?? ""),
-          pago: Boolean(trabalho.freela_pago),
-          salvo: false,
-        }]
+      ? [
+          {
+            id: crypto.randomUUID(),
+            nome: trabalho.freela_nome || "",
+            valor: String(trabalho.freela_valor ?? ""),
+            pago: Boolean(trabalho.freela_pago),
+            salvo: false,
+          },
+        ]
       : [];
 
   return {
@@ -263,7 +270,10 @@ function trabalhoToForm(trabalho: Trabalho, freelas: Freela[]): TrabalhoForm {
   };
 }
 
-function emptyCustoForm(date = localTodayDate(), forma: "Pix" | "Débito" | "Cartão" = "Pix"): CustoForm {
+function emptyCustoForm(
+  date = localTodayDate(),
+  forma: "Pix" | "Débito" | "Cartão" = "Pix",
+): CustoForm {
   return {
     data: date,
     tipo: "Pessoal",
@@ -276,14 +286,16 @@ function emptyCustoForm(date = localTodayDate(), forma: "Pix" | "Débito" | "Car
 }
 
 function custoToForm(custo: Custo): CustoForm {
-  const forma = custo.forma_pagamento === "Débito" || custo.forma_pagamento === "Cartão"
-    ? custo.forma_pagamento
-    : "Pix";
+  const forma =
+    custo.forma_pagamento === "Débito" || custo.forma_pagamento === "Cartão"
+      ? custo.forma_pagamento
+      : "Pix";
 
   return {
     data: custo.data || localTodayDate(),
     tipo: custo.tipo === "Trabalho" ? "Trabalho" : "Pessoal",
-    categoria: custo.categoria || (forma === "Cartão" ? "Fatura do cartão" : "Outros"),
+    categoria:
+      custo.categoria || (forma === "Cartão" ? "Fatura do cartão" : "Outros"),
     forma_pagamento: forma,
     nome: custo.nome || "",
     valor: String(custo.valor ?? ""),
@@ -309,7 +321,9 @@ async function apiGet<T>(table: string): Promise<T[]> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Erro ao buscar tabela "${table}". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`);
+    throw new Error(
+      `Erro ao buscar tabela "${table}". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`,
+    );
   }
 
   return response.json();
@@ -333,12 +347,13 @@ async function apiGetFreelas(): Promise<Freela[]> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Erro ao buscar tabela "freelas". Status ${response.status}. Resposta: ${text}`);
+    throw new Error(
+      `Erro ao buscar tabela "freelas". Status ${response.status}. Resposta: ${text}`,
+    );
   }
 
   return response.json();
 }
-
 
 async function apiInsert<T>(table: string, body: unknown): Promise<T> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
@@ -352,7 +367,11 @@ async function apiInsert<T>(table: string, body: unknown): Promise<T> {
   return data[0];
 }
 
-async function apiUpdate<T>(table: string, id: string, body: unknown): Promise<T> {
+async function apiUpdate<T>(
+  table: string,
+  id: string,
+  body: unknown,
+): Promise<T> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
     method: "PATCH",
     headers: { ...headers, Prefer: "return=representation" },
@@ -374,7 +393,9 @@ async function apiDelete(table: string, id: string) {
 }
 
 export default function FinanceiroJeanNovaes() {
-  const [activeTab, setActiveTab] = useState<"Dashboard" | "Trabalhos" | "Despesas" | "Cartão">("Dashboard");
+  const [activeTab, setActiveTab] = useState<
+    "Dashboard" | "Trabalhos" | "Despesas" | "Cartão"
+  >("Dashboard");
   const [month, setMonthState] = useState(initialMonthKey());
   const savingRef = useRef(false);
 
@@ -397,12 +418,17 @@ export default function FinanceiroJeanNovaes() {
   const [novoCustoAberto, setNovoCustoAberto] = useState(false);
   const [novaFaturaAberta, setNovaFaturaAberta] = useState(false);
 
-  const [trabalhoForm, setTrabalhoForm] = useState<TrabalhoForm>(emptyTrabalhoForm());
+  const [trabalhoForm, setTrabalhoForm] =
+    useState<TrabalhoForm>(emptyTrabalhoForm());
   const [custoForm, setCustoForm] = useState<CustoForm>(emptyCustoForm());
 
-  const [trabalhoEditando, setTrabalhoEditando] = useState<Trabalho | null>(null);
+  const [trabalhoEditando, setTrabalhoEditando] = useState<Trabalho | null>(
+    null,
+  );
   const [custoEditando, setCustoEditando] = useState<Custo | null>(null);
-  const [custoTrabalhoAbertoId, setCustoTrabalhoAbertoId] = useState<string | null>(null);
+  const [custoTrabalhoAbertoId, setCustoTrabalhoAbertoId] = useState<
+    string | null
+  >(null);
 
   async function carregarDados(mes?: string) {
     try {
@@ -422,7 +448,11 @@ export default function FinanceiroJeanNovaes() {
       if (mes) setMonth(mes);
     } catch (error) {
       console.error(error);
-      setErro(error instanceof Error ? error.message : "Erro desconhecido ao carregar dados.");
+      setErro(
+        error instanceof Error
+          ? error.message
+          : "Erro desconhecido ao carregar dados.",
+      );
     } finally {
       setLoading(false);
     }
@@ -445,11 +475,19 @@ export default function FinanceiroJeanNovaes() {
   }, [custos, month]);
 
   const faturasDoMes = useMemo(() => {
-    return custosDoMes.filter((item) => item.forma_pagamento === "Cartão" || item.categoria === "Fatura do cartão");
+    return custosDoMes.filter(
+      (item) =>
+        item.forma_pagamento === "Cartão" ||
+        item.categoria === "Fatura do cartão",
+    );
   }, [custosDoMes]);
 
   const despesasDoMes = useMemo(() => {
-    return custosDoMes.filter((item) => item.forma_pagamento !== "Cartão" && item.categoria !== "Fatura do cartão");
+    return custosDoMes.filter(
+      (item) =>
+        item.forma_pagamento !== "Cartão" &&
+        item.categoria !== "Fatura do cartão",
+    );
   }, [custosDoMes]);
 
   const stats = useMemo(() => {
@@ -457,16 +495,30 @@ export default function FinanceiroJeanNovaes() {
       .filter((trabalho) => Boolean(trabalho.recebido))
       .reduce((sum, trabalho) => sum + Number(trabalho.valor_cobrado || 0), 0);
 
-    const custosLancados = custosDoMes.reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
-    const idsTrabalhosDoMes = new Set(trabalhosDoMes.map((trabalho) => trabalho.id));
+    const custosLancados = custosDoMes.reduce(
+      (sum, custo) => sum + Number(custo.valor || 0),
+      0,
+    );
+    const idsTrabalhosDoMes = new Set(
+      trabalhosDoMes.map((trabalho) => trabalho.id),
+    );
 
     const freelasPagosNovos = freelas
-      .filter((freela) => idsTrabalhosDoMes.has(freela.trabalho_id) && Boolean(freela.pago))
+      .filter(
+        (freela) =>
+          idsTrabalhosDoMes.has(freela.trabalho_id) && Boolean(freela.pago),
+      )
       .reduce((sum, freela) => sum + Number(freela.valor || 0), 0);
 
-    const trabalhosComFreelasNovos = new Set(freelas.map((freela) => freela.trabalho_id));
+    const trabalhosComFreelasNovos = new Set(
+      freelas.map((freela) => freela.trabalho_id),
+    );
     const freelasPagosAntigos = trabalhosDoMes
-      .filter((trabalho) => !trabalhosComFreelasNovos.has(trabalho.id) && Boolean(trabalho.freela_pago))
+      .filter(
+        (trabalho) =>
+          !trabalhosComFreelasNovos.has(trabalho.id) &&
+          Boolean(trabalho.freela_pago),
+      )
       .reduce((sum, trabalho) => sum + Number(trabalho.freela_valor || 0), 0);
 
     const saiu = custosLancados + freelasPagosNovos + freelasPagosAntigos;
@@ -491,7 +543,10 @@ export default function FinanceiroJeanNovaes() {
     const vinculados = freelasDoTrabalho(trabalho.id);
 
     if (vinculados.length > 0) {
-      return vinculados.reduce((sum, freela) => sum + Number(freela.valor || 0), 0);
+      return vinculados.reduce(
+        (sum, freela) => sum + Number(freela.valor || 0),
+        0,
+      );
     }
 
     return Number(trabalho.freela_valor || 0);
@@ -500,7 +555,7 @@ export default function FinanceiroJeanNovaes() {
   function totalCustosTrabalho(trabalho: Trabalho) {
     const custosVinculados = custosDoTrabalho(trabalho.id).reduce(
       (sum, c) => sum + Number(c.valor || 0),
-      0
+      0,
     );
 
     return custosVinculados + totalFreelasTrabalho(trabalho);
@@ -513,12 +568,19 @@ export default function FinanceiroJeanNovaes() {
   function trabalhoFinalizado(trabalho: Trabalho) {
     const vinculados = freelasDoTrabalho(trabalho.id);
     const temFreelaNovo = vinculados.length > 0;
-    const novosPagos = !temFreelaNovo || vinculados.every((freela) => Boolean(freela.pago));
+    const novosPagos =
+      !temFreelaNovo || vinculados.every((freela) => Boolean(freela.pago));
 
-    const temFreelaAntigo = !temFreelaNovo && Number(trabalho.freela_valor || 0) > 0;
+    const temFreelaAntigo =
+      !temFreelaNovo && Number(trabalho.freela_valor || 0) > 0;
     const antigoPago = !temFreelaAntigo || Boolean(trabalho.freela_pago);
 
-    return Boolean(trabalho.recebido) && Boolean(trabalho.entregue) && novosPagos && antigoPago;
+    return (
+      Boolean(trabalho.recebido) &&
+      Boolean(trabalho.entregue) &&
+      novosPagos &&
+      antigoPago
+    );
   }
 
   async function criarTrabalho() {
@@ -555,7 +617,7 @@ export default function FinanceiroJeanNovaes() {
       const trabalhoCriado = await apiInsert<Trabalho>("trabalhos", body);
 
       const freelasValidos = trabalhoForm.freelas_rascunho.filter(
-        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0
+        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0,
       );
 
       for (const freela of freelasValidos) {
@@ -568,7 +630,7 @@ export default function FinanceiroJeanNovaes() {
       }
 
       const custosValidos = trabalhoForm.custos_rascunho.filter(
-        (custo) => custo.nome.trim() || parseMoney(custo.valor) > 0
+        (custo) => custo.nome.trim() || parseMoney(custo.valor) > 0,
       );
 
       for (const custo of custosValidos) {
@@ -585,7 +647,11 @@ export default function FinanceiroJeanNovaes() {
       if (agendaWindow) {
         agendaWindow.location.href = googleAgendaUrl(trabalhoCriado);
       } else {
-        window.open(googleAgendaUrl(trabalhoCriado), "_blank", "noopener,noreferrer");
+        window.open(
+          googleAgendaUrl(trabalhoCriado),
+          "_blank",
+          "noopener,noreferrer",
+        );
       }
 
       setNovoTrabalhoAberto(false);
@@ -631,7 +697,7 @@ export default function FinanceiroJeanNovaes() {
       }
 
       const freelasValidos = trabalhoForm.freelas_rascunho.filter(
-        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0
+        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0,
       );
 
       for (const freela of freelasValidos) {
@@ -848,7 +914,9 @@ export default function FinanceiroJeanNovaes() {
   function abrirNovoCustoDoTrabalho(trabalho: Trabalho) {
     setCustoEditando(null);
     setNovoCustoAberto(false);
-    setCustoTrabalhoAbertoId((atual) => atual === trabalho.id ? null : trabalho.id);
+    setCustoTrabalhoAbertoId((atual) =>
+      atual === trabalho.id ? null : trabalho.id,
+    );
     setCustoForm({
       data: trabalho.data,
       tipo: "Trabalho",
@@ -860,32 +928,59 @@ export default function FinanceiroJeanNovaes() {
     });
   }
 
-  const navItems: Array<typeof activeTab> = ["Dashboard", "Trabalhos", "Despesas", "Cartão"];
+  const navItems: Array<typeof activeTab> = [
+    "Dashboard",
+    "Trabalhos",
+    "Despesas",
+    "Cartão",
+  ];
+  const navIcons: Record<typeof activeTab, string> = {
+    Dashboard: "⌂",
+    Trabalhos: "▣",
+    Despesas: "−",
+    Cartão: "▰",
+  };
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#123b4a_0%,#071016_38%,#030507_100%)] text-white pb-28 md:pb-8 md:flex">
       <aside className="hidden md:flex w-72 border-r border-cyan-800/40 p-6 flex-col gap-3 sticky top-0 h-screen bg-[#081117]/95">
-        <h2 className="text-xl font-bold mb-6">Financeiro Jean Novaes</h2>
+        <div className="mb-6">
+          <p className="text-cyan-100/50 text-xs uppercase tracking-[0.2em]">
+            Jean Novaes
+          </p>
+          <h2 className="text-2xl font-bold mt-1">Financeiro</h2>
+        </div>
 
         {navItems.map((item) => (
           <button
             key={item}
             onClick={() => setActiveTab(item)}
-            className={`rounded-2xl p-4 text-left ${
-              activeTab === item ? "bg-white text-black font-semibold" : "bg-zinc-900 border border-cyan-900/40"
+            className={`rounded-2xl px-4 py-3.5 text-left flex items-center gap-3 transition ${
+              activeTab === item
+                ? "bg-white text-black font-semibold shadow-lg"
+                : "text-cyan-50/70 hover:bg-cyan-950/35"
             }`}
           >
-            {item}
+            <span className="w-7 text-center text-lg">{navIcons[item]}</span>
+            <span>{item}</span>
           </button>
         ))}
       </aside>
 
       <div className="flex-1 p-4 md:p-8">
         <div className="max-w-6xl mx-auto space-y-6">
-          <header>
-            <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-white drop-shadow-[0_0_18px_rgba(34,211,238,0.15)]">
-              Financeiro Jean Novaes Audiovisual
-            </h1>
+          <header className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-cyan-100/50 text-xs uppercase tracking-[0.2em] md:hidden">
+                Jean Novaes Audiovisual
+              </p>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+                {activeTab}
+              </h1>
+            </div>
+            {loading && (
+              <span className="text-cyan-100/45 text-sm">Atualizando...</span>
+            )}
           </header>
 
           {erro && (
@@ -894,41 +989,78 @@ export default function FinanceiroJeanNovaes() {
             </div>
           )}
 
-          {loading && (
-            <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/70">
-              Carregando dados...
-            </div>
-          )}
-
           {activeTab === "Dashboard" && (
             <>
+              <div className="bg-[#0d1820]/75 border border-cyan-900/35 rounded-2xl px-4 py-3">
+                <MonthHeader title="Resumo" month={month} setMonth={setMonth} />
+              </div>
+
               <ResumoCards stats={stats} />
 
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <section className="grid grid-cols-3 gap-3">
                 <div className="space-y-3">
-                  <button onClick={abrirNovoTrabalho} className="w-full bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition">
-                    + Novo Trabalho
+                  <button
+                    onClick={abrirNovoTrabalho}
+                    className="w-full min-h-24 bg-gradient-to-br from-cyan-700 to-teal-700 text-white rounded-2xl p-3 md:p-5 font-semibold shadow-lg shadow-cyan-950/30 active:scale-[0.98] transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <span className="text-2xl">＋</span>
+                    <span className="text-xs md:text-base">Trabalho</span>
                   </button>
                   {novoTrabalhoAberto && (
-                    <TrabalhoFormBox title="Novo Trabalho" value={trabalhoForm} setValue={setTrabalhoForm} onSave={criarTrabalho} saving={saving} permitirCustosLivres saveLabel="Salvar + Agenda" />
+                    <div className="col-span-3">
+                      <TrabalhoFormBox
+                        title="Novo Trabalho"
+                        value={trabalhoForm}
+                        setValue={setTrabalhoForm}
+                        onSave={criarTrabalho}
+                        saving={saving}
+                        permitirCustosLivres
+                        saveLabel="Salvar + Agenda"
+                      />
+                    </div>
                   )}
                 </div>
 
                 <div className="space-y-3">
-                  <button onClick={abrirNovoCusto} className="w-full bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition">
-                    + Nova Despesa
+                  <button
+                    onClick={abrirNovoCusto}
+                    className="w-full min-h-24 bg-[#0d1820] border border-cyan-800/45 text-white rounded-2xl p-3 md:p-5 font-semibold active:scale-[0.98] transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <span className="text-2xl">−</span>
+                    <span className="text-xs md:text-base">Despesa</span>
                   </button>
                   {novoCustoAberto && (
-                    <CustoFormBox title="Nova Despesa" value={custoForm} setValue={setCustoForm} onSave={criarCusto} saving={saving} />
+                    <div className="col-span-3">
+                      <CustoFormBox
+                        title="Nova Despesa"
+                        value={custoForm}
+                        setValue={setCustoForm}
+                        onSave={criarCusto}
+                        saving={saving}
+                      />
+                    </div>
                   )}
                 </div>
 
                 <div className="space-y-3">
-                  <button onClick={abrirNovaFatura} className="w-full bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-3xl p-5 text-lg font-semibold shadow-lg shadow-cyan-950/40 hover:from-cyan-600 hover:to-teal-500 active:scale-[0.99] transition">
-                    + Fatura do Cartão
+                  <button
+                    onClick={abrirNovaFatura}
+                    className="w-full min-h-24 bg-[#0d1820] border border-cyan-800/45 text-white rounded-2xl p-3 md:p-5 font-semibold active:scale-[0.98] transition flex flex-col items-center justify-center gap-1"
+                  >
+                    <span className="text-2xl">▰</span>
+                    <span className="text-xs md:text-base">Fatura</span>
                   </button>
                   {novaFaturaAberta && (
-                    <CustoFormBox title="Nova Fatura" value={custoForm} setValue={setCustoForm} onSave={criarCusto} saving={saving} contexto="fatura" />
+                    <div className="col-span-3">
+                      <CustoFormBox
+                        title="Nova Fatura"
+                        value={custoForm}
+                        setValue={setCustoForm}
+                        onSave={criarCusto}
+                        saving={saving}
+                        contexto="fatura"
+                      />
+                    </div>
                   )}
                 </div>
               </section>
@@ -953,7 +1085,12 @@ export default function FinanceiroJeanNovaes() {
 
           {activeTab === "Trabalhos" && (
             <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
-              <MonthHeader title="Trabalhos" month={month} setMonth={setMonth} count={`${trabalhosDoMes.length} trabalhos`} />
+              <MonthHeader
+                title="Trabalhos"
+                month={month}
+                setMonth={setMonth}
+                count={`${trabalhosDoMes.length} trabalhos`}
+              />
 
               <ListaTrabalhos
                 trabalhos={trabalhosDoMes}
@@ -966,28 +1103,91 @@ export default function FinanceiroJeanNovaes() {
           {activeTab === "Despesas" && (
             <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <MonthHeader title="Despesas" month={month} setMonth={setMonth} count={money(despesasDoMes.reduce((sum, custo) => sum + Number(custo.valor || 0), 0))} />
-                <button onClick={abrirNovoCusto} className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold">+ Nova Despesa</button>
+                <MonthHeader
+                  title="Despesas"
+                  month={month}
+                  setMonth={setMonth}
+                  count={money(
+                    despesasDoMes.reduce(
+                      (sum, custo) => sum + Number(custo.valor || 0),
+                      0,
+                    ),
+                  )}
+                />
+                <button
+                  onClick={abrirNovoCusto}
+                  className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold"
+                >
+                  + Nova Despesa
+                </button>
               </div>
-              {novoCustoAberto && <CustoFormBox title="Nova Despesa" value={custoForm} setValue={setCustoForm} onSave={criarCusto} saving={saving} />}
-              <ListaCustos custos={despesasDoMes} onEdit={abrirEdicaoCusto} total={despesasDoMes.reduce((sum, custo) => sum + Number(custo.valor || 0), 0)} />
+              {novoCustoAberto && (
+                <CustoFormBox
+                  title="Nova Despesa"
+                  value={custoForm}
+                  setValue={setCustoForm}
+                  onSave={criarCusto}
+                  saving={saving}
+                />
+              )}
+              <ListaCustos
+                custos={despesasDoMes}
+                onEdit={abrirEdicaoCusto}
+                total={despesasDoMes.reduce(
+                  (sum, custo) => sum + Number(custo.valor || 0),
+                  0,
+                )}
+              />
             </section>
           )}
 
           {activeTab === "Cartão" && (
             <section className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <MonthHeader title="Cartão" month={month} setMonth={setMonth} count={money(faturasDoMes.reduce((sum, custo) => sum + Number(custo.valor || 0), 0))} />
-                <button onClick={abrirNovaFatura} className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold">+ Nova Fatura</button>
+                <MonthHeader
+                  title="Cartão"
+                  month={month}
+                  setMonth={setMonth}
+                  count={money(
+                    faturasDoMes.reduce(
+                      (sum, custo) => sum + Number(custo.valor || 0),
+                      0,
+                    ),
+                  )}
+                />
+                <button
+                  onClick={abrirNovaFatura}
+                  className="bg-gradient-to-r from-cyan-700 to-teal-600 text-white rounded-2xl px-5 py-3 font-semibold"
+                >
+                  + Nova Fatura
+                </button>
               </div>
-              {novaFaturaAberta && <CustoFormBox title="Nova Fatura" value={custoForm} setValue={setCustoForm} onSave={criarCusto} saving={saving} contexto="fatura" />}
-              <ListaCustos custos={faturasDoMes} onEdit={abrirEdicaoCusto} total={faturasDoMes.reduce((sum, custo) => sum + Number(custo.valor || 0), 0)} />
+              {novaFaturaAberta && (
+                <CustoFormBox
+                  title="Nova Fatura"
+                  value={custoForm}
+                  setValue={setCustoForm}
+                  onSave={criarCusto}
+                  saving={saving}
+                  contexto="fatura"
+                />
+              )}
+              <ListaCustos
+                custos={faturasDoMes}
+                onEdit={abrirEdicaoCusto}
+                total={faturasDoMes.reduce(
+                  (sum, custo) => sum + Number(custo.valor || 0),
+                  0,
+                )}
+              />
             </section>
           )}
 
-
           {trabalhoEditando && (
-            <Modal title="Editar Trabalho" onClose={() => setTrabalhoEditando(null)}>
+            <Modal
+              title="Editar Trabalho"
+              onClose={() => setTrabalhoEditando(null)}
+            >
               <TrabalhoFormBox
                 title="Editar Trabalho"
                 value={trabalhoForm}
@@ -1026,12 +1226,17 @@ export default function FinanceiroJeanNovaes() {
               )}
 
               <div className="grid grid-cols-2 gap-3 mt-4">
-                <InfoCard label="Custos" value={money(totalCustosTrabalho(trabalhoEditando))} />
-                <InfoCard label="Lucro previsto" value={money(lucroPrevisto(trabalhoEditando))} />
+                <InfoCard
+                  label="Custos"
+                  value={money(totalCustosTrabalho(trabalhoEditando))}
+                />
+                <InfoCard
+                  label="Lucro previsto"
+                  value={money(lucroPrevisto(trabalhoEditando))}
+                />
               </div>
             </Modal>
           )}
-
 
           {custoEditando && (
             <Modal title="Editar Custo" onClose={() => setCustoEditando(null)}>
@@ -1042,22 +1247,32 @@ export default function FinanceiroJeanNovaes() {
                 onSave={salvarEdicaoCusto}
                 saving={saving}
                 onDelete={() => excluirCusto(custoEditando.id)}
-                contexto={custoForm.tipo === "Trabalho" ? "trabalho" : custoForm.forma_pagamento === "Cartão" ? "fatura" : "geral"}
+                contexto={
+                  custoForm.tipo === "Trabalho"
+                    ? "trabalho"
+                    : custoForm.forma_pagamento === "Cartão"
+                      ? "fatura"
+                      : "geral"
+                }
               />
             </Modal>
           )}
         </div>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#061016] border-t border-cyan-900/40 p-4 flex items-center justify-around">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#061016]/95 backdrop-blur border-t border-cyan-900/40 px-3 py-2 flex items-center justify-around">
         {navItems.map((item) => (
           <button
             key={item}
             onClick={() => setActiveTab(item)}
-            className={`flex flex-col items-center gap-1 ${activeTab === item ? "text-white" : "text-cyan-100/55"}`}
+            className={`min-w-16 rounded-xl py-2 flex flex-col items-center gap-1 transition ${
+              activeTab === item
+                ? "bg-cyan-950/60 text-white"
+                : "text-cyan-100/45"
+            }`}
           >
-            <span className="text-lg">●</span>
-            <span className="text-xs">{item}</span>
+            <span className="text-lg leading-none">{navIcons[item]}</span>
+            <span className="text-[11px]">{item}</span>
           </button>
         ))}
       </nav>
@@ -1076,21 +1291,45 @@ function ResumoCards({
   };
 }) {
   return (
-    <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <InfoCard label="Entrou" value={money(stats.entrou)} />
-      <InfoCard label="Saiu" value={money(stats.saiu)} />
-      <InfoCard label="Sobrou" value={money(stats.sobrou)} />
-      <InfoCard label="Trabalhos" value={String(stats.quantidadeTrabalhos)} />
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <InfoCard label="Entrou" value={money(stats.entrou)} icon="↑" />
+      <InfoCard label="Saiu" value={money(stats.saiu)} icon="↓" />
+      <InfoCard label="Sobrou" value={money(stats.sobrou)} icon="=" destaque />
+      <InfoCard
+        label="Trabalhos"
+        value={String(stats.quantidadeTrabalhos)}
+        icon="▣"
+      />
     </section>
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function InfoCard({
+  label,
+  value,
+  icon,
+  destaque = false,
+}: {
+  label: string;
+  value: string;
+  icon?: string;
+  destaque?: boolean;
+}) {
   return (
-    <div className="relative overflow-hidden bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20">
-      <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500/60" />
-      <p className="text-cyan-100/70 text-sm">{label}</p>
-      <h2 className="text-3xl font-bold mt-2">{value}</h2>
+    <div
+      className={`relative overflow-hidden rounded-2xl md:rounded-3xl p-4 md:p-6 border shadow-xl shadow-cyan-950/15 ${
+        destaque
+          ? "bg-gradient-to-br from-cyan-800/55 to-teal-900/45 border-cyan-600/40"
+          : "bg-[#0d1820]/90 border-cyan-900/35"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-cyan-100/60 text-xs md:text-sm">{label}</p>
+        {icon && <span className="text-cyan-300/65 text-sm">{icon}</span>}
+      </div>
+      <h2 className="text-xl md:text-3xl font-bold mt-2 break-words">
+        {value}
+      </h2>
     </div>
   );
 }
@@ -1109,10 +1348,15 @@ function MonthHeader({
   return (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <p className="text-cyan-100/55 text-xs uppercase tracking-wide">Mês vigente</p>
+        <p className="text-cyan-100/55 text-xs uppercase tracking-wide">
+          Mês vigente
+        </p>
 
         <div className="flex items-center gap-3 mt-1">
-          <button className="text-cyan-100/55 text-xl" onClick={() => setMonth(shiftMonth(month, -1))}>
+          <button
+            className="text-cyan-100/55 text-xl"
+            onClick={() => setMonth(shiftMonth(month, -1))}
+          >
             ‹
           </button>
 
@@ -1120,7 +1364,10 @@ function MonthHeader({
             {title} — {monthLabel(month)}
           </h3>
 
-          <button className="text-cyan-100/55 text-xl" onClick={() => setMonth(shiftMonth(month, 1))}>
+          <button
+            className="text-cyan-100/55 text-xl"
+            onClick={() => setMonth(shiftMonth(month, 1))}
+          >
             ›
           </button>
         </div>
@@ -1146,8 +1393,17 @@ function TrabalhosBox({
 }) {
   return (
     <div className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
-      <MonthHeader title="Trabalhos" month={month} setMonth={setMonth} count={`${trabalhos.length} trabalhos`} />
-      <ListaTrabalhos trabalhos={trabalhos} trabalhoFinalizado={trabalhoFinalizado} onEdit={onEdit} />
+      <MonthHeader
+        title="Trabalhos"
+        month={month}
+        setMonth={setMonth}
+        count={`${trabalhos.length} trabalhos`}
+      />
+      <ListaTrabalhos
+        trabalhos={trabalhos}
+        trabalhoFinalizado={trabalhoFinalizado}
+        onEdit={onEdit}
+      />
     </div>
   );
 }
@@ -1172,7 +1428,9 @@ function CustosBox({
     return String(b.created_at || "").localeCompare(String(a.created_at || ""));
   });
 
-  const custosVisiveis = mostrarTodosCustos ? custosOrdenados : custosOrdenados.slice(0, 5);
+  const custosVisiveis = mostrarTodosCustos
+    ? custosOrdenados
+    : custosOrdenados.slice(0, 5);
 
   return (
     <div className="bg-[#0d1820]/90 rounded-3xl p-6 border border-cyan-800/40 shadow-xl shadow-cyan-950/20 space-y-5">
@@ -1189,7 +1447,9 @@ function CustosBox({
           onClick={() => setMostrarTodosCustos((value) => !value)}
           className="w-full bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100 font-semibold hover:bg-cyan-950/35 transition"
         >
-          {mostrarTodosCustos ? "Ocultar custos" : `Ver todos os custos (${custosOrdenados.length})`}
+          {mostrarTodosCustos
+            ? "Ocultar custos"
+            : `Ver todos os custos (${custosOrdenados.length})`}
         </button>
       )}
     </div>
@@ -1229,12 +1489,18 @@ function ListaTrabalhos({
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{item.tipo_trabalho || "Trabalho"}</p>
-              <p className="text-sm text-cyan-100/70 truncate">{item.cliente || "Sem cliente"}</p>
+              <p className="text-sm font-medium truncate">
+                {item.tipo_trabalho || "Trabalho"}
+              </p>
+              <p className="text-sm text-cyan-100/70 truncate">
+                {item.cliente || "Sem cliente"}
+              </p>
             </div>
 
             <div className="text-right shrink-0">
-              <p className="font-bold whitespace-nowrap">{money(item.valor_cobrado || 0)}</p>
+              <p className="font-bold whitespace-nowrap">
+                {money(item.valor_cobrado || 0)}
+              </p>
             </div>
           </div>
 
@@ -1280,7 +1546,9 @@ function ListaCustos({
             <div>
               <h4 className="font-semibold">{custo.nome || "Custo"}</h4>
               <p className="text-cyan-100/55 text-sm mt-1">
-                {shortDate(custo.data)} • {custo.categoria || (custo.tipo === "Trabalho" ? "Custo do trabalho" : "Outros")}
+                {shortDate(custo.data)} •{" "}
+                {custo.categoria ||
+                  (custo.tipo === "Trabalho" ? "Custo do trabalho" : "Outros")}
                 {custo.forma_pagamento ? ` • ${custo.forma_pagamento}` : ""}
               </p>
             </div>
@@ -1333,12 +1601,12 @@ function TrabalhoFormBox({
   function atualizarFreelaRascunho(
     id: string,
     campo: "nome" | "valor" | "pago",
-    novoValor: string | boolean
+    novoValor: string | boolean,
   ) {
     setValue({
       ...value,
       freelas_rascunho: value.freelas_rascunho.map((freela) =>
-        freela.id === id ? { ...freela, [campo]: novoValor } : freela
+        freela.id === id ? { ...freela, [campo]: novoValor } : freela,
       ),
     });
   }
@@ -1346,7 +1614,9 @@ function TrabalhoFormBox({
   function removerFreelaRascunho(id: string) {
     setValue({
       ...value,
-      freelas_rascunho: value.freelas_rascunho.filter((freela) => freela.id !== id),
+      freelas_rascunho: value.freelas_rascunho.filter(
+        (freela) => freela.id !== id,
+      ),
     });
   }
 
@@ -1360,11 +1630,15 @@ function TrabalhoFormBox({
     });
   }
 
-  function atualizarCustoRascunho(id: string, campo: keyof CustoRascunho, novoValor: string) {
+  function atualizarCustoRascunho(
+    id: string,
+    campo: keyof CustoRascunho,
+    novoValor: string,
+  ) {
     setValue({
       ...value,
       custos_rascunho: value.custos_rascunho.map((custo) =>
-        custo.id === id ? { ...custo, [campo]: novoValor } : custo
+        custo.id === id ? { ...custo, [campo]: novoValor } : custo,
       ),
     });
   }
@@ -1378,16 +1652,18 @@ function TrabalhoFormBox({
 
   const totalCustosRascunho = value.custos_rascunho.reduce(
     (sum, custo) => sum + parseMoney(custo.valor),
-    0
+    0,
   );
 
   const totalFreelasRascunho = value.freelas_rascunho.reduce(
     (sum, freela) => sum + parseMoney(freela.valor),
-    0
+    0,
   );
 
   const lucroPrevistoRascunho =
-    parseMoney(value.valor_cobrado) - totalFreelasRascunho - totalCustosRascunho;
+    parseMoney(value.valor_cobrado) -
+    totalFreelasRascunho -
+    totalCustosRascunho;
 
   return (
     <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-5">
@@ -1395,21 +1671,29 @@ function TrabalhoFormBox({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="text-cyan-100/70 text-sm block mb-2">Data inicial</label>
+          <label className="text-cyan-100/70 text-sm block mb-2">
+            Data inicial
+          </label>
           <input
             type="date"
             value={value.data}
-            onChange={(event) => setValue({ ...value, data: event.target.value })}
+            onChange={(event) =>
+              setValue({ ...value, data: event.target.value })
+            }
             className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
           />
         </div>
 
         <div>
-          <label className="text-cyan-100/70 text-sm block mb-2">Data final (opcional)</label>
+          <label className="text-cyan-100/70 text-sm block mb-2">
+            Data final (opcional)
+          </label>
           <input
             type="date"
             value={value.data_fim}
-            onChange={(event) => setValue({ ...value, data_fim: event.target.value })}
+            onChange={(event) =>
+              setValue({ ...value, data_fim: event.target.value })
+            }
             className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
           />
         </div>
@@ -1419,14 +1703,18 @@ function TrabalhoFormBox({
         <input
           placeholder="Cliente"
           value={value.cliente}
-          onChange={(event) => setValue({ ...value, cliente: event.target.value })}
+          onChange={(event) =>
+            setValue({ ...value, cliente: event.target.value })
+          }
           className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
         />
 
         <input
           placeholder="Tipo de trabalho"
           value={value.tipo_trabalho}
-          onChange={(event) => setValue({ ...value, tipo_trabalho: event.target.value })}
+          onChange={(event) =>
+            setValue({ ...value, tipo_trabalho: event.target.value })
+          }
           className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
         />
       </div>
@@ -1435,7 +1723,9 @@ function TrabalhoFormBox({
         placeholder="Valor cobrado — ex: 700 ou 1500,50"
         inputMode="decimal"
         value={value.valor_cobrado}
-        onChange={(event) => setValue({ ...value, valor_cobrado: event.target.value })}
+        onChange={(event) =>
+          setValue({ ...value, valor_cobrado: event.target.value })
+        }
         className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
       />
 
@@ -1492,7 +1782,11 @@ function TrabalhoFormBox({
                   placeholder="Nome do freela"
                   value={freela.nome}
                   onChange={(event) =>
-                    atualizarFreelaRascunho(freela.id, "nome", event.target.value)
+                    atualizarFreelaRascunho(
+                      freela.id,
+                      "nome",
+                      event.target.value,
+                    )
                   }
                   className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                 />
@@ -1502,7 +1796,11 @@ function TrabalhoFormBox({
                   inputMode="decimal"
                   value={freela.valor}
                   onChange={(event) =>
-                    atualizarFreelaRascunho(freela.id, "valor", event.target.value)
+                    atualizarFreelaRascunho(
+                      freela.id,
+                      "valor",
+                      event.target.value,
+                    )
                   }
                   className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                 />
@@ -1538,7 +1836,9 @@ function TrabalhoFormBox({
         {value.freelas_rascunho.length > 0 && (
           <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
             <p className="text-cyan-100/55 text-sm">Total de freelas</p>
-            <p className="font-bold text-xl mt-1">{money(totalFreelasRascunho)}</p>
+            <p className="font-bold text-xl mt-1">
+              {money(totalFreelasRascunho)}
+            </p>
           </div>
         )}
       </div>
@@ -1570,12 +1870,21 @@ function TrabalhoFormBox({
 
           <div className="space-y-3">
             {value.custos_rascunho.map((custo) => (
-              <div key={custo.id} className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 space-y-3">
+              <div
+                key={custo.id}
+                className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 space-y-3"
+              >
                 <div className="grid grid-cols-1 md:grid-cols-[1fr_160px_auto] gap-3">
                   <input
                     placeholder="Nome do custo — ex: gasolina, hotel, pedágio"
                     value={custo.nome}
-                    onChange={(event) => atualizarCustoRascunho(custo.id, "nome", event.target.value)}
+                    onChange={(event) =>
+                      atualizarCustoRascunho(
+                        custo.id,
+                        "nome",
+                        event.target.value,
+                      )
+                    }
                     className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                   />
 
@@ -1583,7 +1892,13 @@ function TrabalhoFormBox({
                     placeholder="Valor"
                     inputMode="decimal"
                     value={custo.valor}
-                    onChange={(event) => atualizarCustoRascunho(custo.id, "valor", event.target.value)}
+                    onChange={(event) =>
+                      atualizarCustoRascunho(
+                        custo.id,
+                        "valor",
+                        event.target.value,
+                      )
+                    }
                     className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
                   />
 
@@ -1599,7 +1914,13 @@ function TrabalhoFormBox({
                 <input
                   placeholder="Observação opcional"
                   value={custo.observacoes}
-                  onChange={(event) => atualizarCustoRascunho(custo.id, "observacoes", event.target.value)}
+                  onChange={(event) =>
+                    atualizarCustoRascunho(
+                      custo.id,
+                      "observacoes",
+                      event.target.value,
+                    )
+                  }
                   className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
                 />
               </div>
@@ -1608,13 +1929,19 @@ function TrabalhoFormBox({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
-              <p className="text-cyan-100/55 text-sm">Total de custos previstos</p>
-              <p className="font-bold text-xl mt-1">{money(totalCustosRascunho)}</p>
+              <p className="text-cyan-100/55 text-sm">
+                Total de custos previstos
+              </p>
+              <p className="font-bold text-xl mt-1">
+                {money(totalCustosRascunho)}
+              </p>
             </div>
 
             <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
               <p className="text-cyan-100/55 text-sm">Lucro previsto</p>
-              <p className="font-bold text-xl mt-1">{money(lucroPrevistoRascunho)}</p>
+              <p className="font-bold text-xl mt-1">
+                {money(lucroPrevistoRascunho)}
+              </p>
             </div>
           </div>
         </div>
@@ -1623,7 +1950,9 @@ function TrabalhoFormBox({
       <textarea
         placeholder="Observações"
         value={value.observacoes}
-        onChange={(event) => setValue({ ...value, observacoes: event.target.value })}
+        onChange={(event) =>
+          setValue({ ...value, observacoes: event.target.value })
+        }
         className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[100px]"
       />
 
@@ -1665,24 +1994,29 @@ function CustosDoTrabalhoBox({
   onAdd: () => void;
   onEdit: (custo: Custo) => void;
 }) {
-  const totalCustosLivres = custos.reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
+  const totalCustosLivres = custos.reduce(
+    (sum, custo) => sum + Number(custo.valor || 0),
+    0,
+  );
 
   const freelasExibidos =
     freelas.length > 0
       ? freelas
       : Number(trabalho.freela_valor || 0) > 0
-        ? [{
-            id: `antigo-${trabalho.id}`,
-            trabalho_id: trabalho.id,
-            nome: trabalho.freela_nome || "sem nome",
-            valor: Number(trabalho.freela_valor || 0),
-            pago: Boolean(trabalho.freela_pago),
-          }]
+        ? [
+            {
+              id: `antigo-${trabalho.id}`,
+              trabalho_id: trabalho.id,
+              nome: trabalho.freela_nome || "sem nome",
+              valor: Number(trabalho.freela_valor || 0),
+              pago: Boolean(trabalho.freela_pago),
+            },
+          ]
         : [];
 
   const totalFreelas = freelasExibidos.reduce(
     (sum, freela) => sum + Number(freela.valor || 0),
-    0
+    0,
   );
 
   return (
@@ -1720,7 +2054,9 @@ function CustosDoTrabalhoBox({
           >
             <div className="min-w-0">
               <p className="font-medium truncate">{custo.nome || "Custo"}</p>
-              <p className="text-cyan-100/55 text-sm truncate">{shortDate(custo.data)} • custo do trabalho</p>
+              <p className="text-cyan-100/55 text-sm truncate">
+                {shortDate(custo.data)} • custo do trabalho
+              </p>
             </div>
 
             <p className="font-bold whitespace-nowrap">{money(custo.valor)}</p>
@@ -1733,7 +2069,9 @@ function CustosDoTrabalhoBox({
             className="flex items-center justify-between gap-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4"
           >
             <div className="min-w-0">
-              <p className="font-medium truncate">Freela — {freela.nome || "sem nome"}</p>
+              <p className="font-medium truncate">
+                Freela — {freela.nome || "sem nome"}
+              </p>
               <p className="text-orange-300 text-sm">
                 {freela.pago ? "Pago" : "Pagamento pendente"}
               </p>
@@ -1752,7 +2090,9 @@ function CustosDoTrabalhoBox({
 
         <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
           <p className="text-cyan-100/55 text-sm">Custos + freela</p>
-          <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + totalFreelas)}</p>
+          <p className="text-2xl font-bold mt-1">
+            {money(totalCustosLivres + totalFreelas)}
+          </p>
         </div>
       </div>
     </div>
@@ -1776,7 +2116,15 @@ function CustoFormBox({
   onDelete?: () => void;
   contexto?: "geral" | "trabalho" | "fatura";
 }) {
-  const categorias = ["Alimentação", "Combustível", "Assinaturas", "Equipamentos", "Lazer", "Casa", "Outros"];
+  const categorias = [
+    "Alimentação",
+    "Combustível",
+    "Assinaturas",
+    "Equipamentos",
+    "Lazer",
+    "Casa",
+    "Outros",
+  ];
 
   return (
     <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-4">
@@ -1784,40 +2132,81 @@ function CustoFormBox({
 
       {contexto === "trabalho" && (
         <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
-          <p className="text-cyan-100/70 text-sm">Este custo ficará vinculado ao trabalho.</p>
+          <p className="text-cyan-100/70 text-sm">
+            Este custo ficará vinculado ao trabalho.
+          </p>
         </div>
       )}
 
       {contexto === "fatura" && (
         <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
-          <p className="text-cyan-100/70 text-sm">Cadastre apenas o valor total da fatura fechada.</p>
+          <p className="text-cyan-100/70 text-sm">
+            Cadastre apenas o valor total da fatura fechada.
+          </p>
         </div>
       )}
 
       <div>
         <label className="text-cyan-100/70 text-sm block mb-2">Data</label>
-        <input type="date" value={value.data} onChange={(event) => setValue({ ...value, data: event.target.value })} className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full" />
+        <input
+          type="date"
+          value={value.data}
+          onChange={(event) => setValue({ ...value, data: event.target.value })}
+          className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+        />
       </div>
 
       {contexto === "geral" && (
         <div>
-          <label className="text-cyan-100/70 text-sm block mb-2">Categoria</label>
-          <select value={value.categoria} onChange={(event) => setValue({ ...value, categoria: event.target.value })} className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full">
-            {categorias.map((categoria) => <option key={categoria} value={categoria}>{categoria}</option>)}
+          <label className="text-cyan-100/70 text-sm block mb-2">
+            Categoria
+          </label>
+          <select
+            value={value.categoria}
+            onChange={(event) =>
+              setValue({ ...value, categoria: event.target.value })
+            }
+            className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+          >
+            {categorias.map((categoria) => (
+              <option key={categoria} value={categoria}>
+                {categoria}
+              </option>
+            ))}
           </select>
         </div>
       )}
 
-      <input placeholder={contexto === "fatura" ? "Cartão — ex: Nubank" : "Descrição"} value={value.nome} onChange={(event) => setValue({ ...value, nome: event.target.value })} className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full" />
+      <input
+        placeholder={
+          contexto === "fatura" ? "Cartão — ex: Nubank" : "Descrição"
+        }
+        value={value.nome}
+        onChange={(event) => setValue({ ...value, nome: event.target.value })}
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+      />
 
-      <input placeholder="Valor — ex: 89,90" inputMode="decimal" value={value.valor} onChange={(event) => setValue({ ...value, valor: event.target.value })} className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full" />
+      <input
+        placeholder="Valor — ex: 89,90"
+        inputMode="decimal"
+        value={value.valor}
+        onChange={(event) => setValue({ ...value, valor: event.target.value })}
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full"
+      />
 
       {contexto === "geral" && (
         <div>
-          <label className="text-cyan-100/70 text-sm block mb-2">Forma de pagamento</label>
+          <label className="text-cyan-100/70 text-sm block mb-2">
+            Forma de pagamento
+          </label>
           <div className="grid grid-cols-2 gap-3">
             {(["Pix", "Débito"] as const).map((forma) => (
-              <button type="button" key={forma} onClick={() => setValue({ ...value, forma_pagamento: forma })} className={`rounded-2xl p-4 font-medium ${value.forma_pagamento === forma ? "bg-white text-black" : "bg-[#061016]/80 border border-cyan-900/40"}`}>
+              <button
+                type="button"
+                key={forma}
+                onClick={() => setValue({ ...value, forma_pagamento: forma })}
+                className={`rounded-2xl p-4 font-medium ${value.forma_pagamento === forma ? "bg-white text-black" : "bg-[#061016]/80 border border-cyan-900/40"}`}
+              >
                 {forma}
               </button>
             ))}
@@ -1825,11 +2214,34 @@ function CustoFormBox({
         </div>
       )}
 
-      <textarea placeholder="Observação (opcional)" value={value.observacoes} onChange={(event) => setValue({ ...value, observacoes: event.target.value })} className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[90px]" />
+      <textarea
+        placeholder="Observação (opcional)"
+        value={value.observacoes}
+        onChange={(event) =>
+          setValue({ ...value, observacoes: event.target.value })
+        }
+        className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none w-full min-h-[90px]"
+      />
 
       <div className="flex gap-3">
-        {onDelete && <button type="button" onClick={onDelete} disabled={saving} className="w-1/3 bg-red-500/15 text-red-300 border border-red-500/20 rounded-2xl p-4 font-semibold disabled:opacity-50">Apagar</button>}
-        <button type="button" onClick={onSave} disabled={saving} className="flex-1 bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50">{saving ? "Salvando..." : "Salvar"}</button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={saving}
+            className="w-1/3 bg-red-500/15 text-red-300 border border-red-500/20 rounded-2xl p-4 font-semibold disabled:opacity-50"
+          >
+            Apagar
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saving}
+          className="flex-1 bg-white text-black rounded-2xl p-4 font-semibold disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Salvar"}
+        </button>
       </div>
     </div>
   );
@@ -1850,7 +2262,10 @@ function Modal({
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold">{title}</h2>
 
-          <button onClick={onClose} className="bg-zinc-900 border border-cyan-900/40 rounded-2xl px-4 py-2">
+          <button
+            onClick={onClose}
+            className="bg-zinc-900 border border-cyan-900/40 rounded-2xl px-4 py-2"
+          >
             Fechar
           </button>
         </div>
