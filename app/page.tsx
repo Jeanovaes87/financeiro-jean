@@ -193,7 +193,7 @@ function googleAgendaUrl(trabalho: TrabalhoForm | Trabalho) {
       ? `Freelas: ${trabalho.freelas_rascunho
           .map((freela) => `${freela.nome || "Sem nome"} — ${money(parseMoney(freela.valor))}`)
           .join(", ")}`
-      : trabalho.freela_nome
+      : "freela_nome" in trabalho && trabalho.freela_nome
         ? `Freela: ${trabalho.freela_nome}`
         : "",
     trabalho.observacoes ? `Observações: ${trabalho.observacoes}` : "",
