@@ -18,6 +18,15 @@ type Trabalho = {
   created_at?: string;
 };
 
+type Freela = {
+  id: string;
+  trabalho_id: string;
+  nome: string;
+  valor: number | null;
+  pago: boolean | null;
+  created_at?: string;
+};
+
 type Custo = {
   id: string;
   data: string;
@@ -54,6 +63,14 @@ type CustoRascunho = {
   observacoes: string;
 };
 
+type FreelaRascunho = {
+  id: string;
+  nome: string;
+  valor: string;
+  pago: boolean;
+  salvo?: boolean;
+};
+
 type TrabalhoForm = {
   data: string;
   data_fim: string;
@@ -62,9 +79,7 @@ type TrabalhoForm = {
   valor_cobrado: string;
   recebido: boolean;
   entregue: boolean;
-  freela_nome: string;
-  freela_valor: string;
-  freela_pago: boolean;
+  freelas_rascunho: FreelaRascunho[];
   observacoes: string;
   custos_rascunho: CustoRascunho[];
 };
@@ -174,8 +189,13 @@ function googleAgendaUrl(trabalho: TrabalhoForm | Trabalho) {
     `Cliente: ${trabalho.cliente || "Sem cliente"}`,
     `Tipo de trabalho: ${trabalho.tipo_trabalho || "Trabalho"}`,
     `Valor: ${money(Number(trabalho.valor_cobrado || 0))}`,
-    trabalho.freela_nome ? `Freela: ${trabalho.freela_nome}` : "",
-    Number(trabalho.freela_valor || 0) > 0 ? `Valor freela: ${money(Number(trabalho.freela_valor || 0))}` : "",
+    "freelas_rascunho" in trabalho && trabalho.freelas_rascunho.length
+      ? `Freelas: ${trabalho.freelas_rascunho
+          .map((freela) => `${freela.nome || "Sem nome"} — ${money(parseMoney(freela.valor))}`)
+          .join(", ")}`
+      : trabalho.freela_nome
+        ? `Freela: ${trabalho.freela_nome}`
+        : "",
     trabalho.observacoes ? `Observações: ${trabalho.observacoes}` : "",
   ]
     .filter(Boolean)
@@ -215,15 +235,34 @@ function emptyTrabalhoForm(date = localTodayDate()): TrabalhoForm {
     valor_cobrado: "",
     recebido: false,
     entregue: false,
-    freela_nome: "",
-    freela_valor: "",
-    freela_pago: false,
+    freelas_rascunho: [],
     observacoes: "",
     custos_rascunho: [],
   };
 }
 
-function trabalhoToForm(trabalho: Trabalho): TrabalhoForm {
+function trabalhoToForm(trabalho: Trabalho, freelas: Freela[]): TrabalhoForm {
+  const freelasDoTrabalho = freelas
+    .filter((freela) => freela.trabalho_id === trabalho.id)
+    .map((freela) => ({
+      id: freela.id,
+      nome: freela.nome || "",
+      valor: String(freela.valor ?? ""),
+      pago: Boolean(freela.pago),
+      salvo: true,
+    }));
+
+  const freelaAntigo =
+    freelasDoTrabalho.length === 0 && Number(trabalho.freela_valor || 0) > 0
+      ? [{
+          id: crypto.randomUUID(),
+          nome: trabalho.freela_nome || "",
+          valor: String(trabalho.freela_valor ?? ""),
+          pago: Boolean(trabalho.freela_pago),
+          salvo: false,
+        }]
+      : [];
+
   return {
     data: trabalho.data || localTodayDate(),
     data_fim: trabalho.data_fim || "",
@@ -232,9 +271,7 @@ function trabalhoToForm(trabalho: Trabalho): TrabalhoForm {
     valor_cobrado: String(trabalho.valor_cobrado ?? ""),
     recebido: Boolean(trabalho.recebido),
     entregue: Boolean(trabalho.entregue),
-    freela_nome: trabalho.freela_nome || "",
-    freela_valor: String(trabalho.freela_valor ?? ""),
-    freela_pago: Boolean(trabalho.freela_pago),
+    freelas_rascunho: [...freelasDoTrabalho, ...freelaAntigo],
     observacoes: trabalho.observacoes || "",
     custos_rascunho: [],
   };
@@ -299,6 +336,30 @@ async function apiGet<T>(table: string): Promise<T[]> {
   if (!response.ok) {
     const text = await response.text();
     throw new Error(`Erro ao buscar tabela "${table}". Status ${response.status}. URL usada: ${endpoint}. Resposta: ${text}`);
+  }
+
+  return response.json();
+}
+
+async function apiGetFreelas(): Promise<Freela[]> {
+  if (!SUPABASE_URL) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL está vazia no Vercel.");
+  }
+
+  if (!SUPABASE_KEY) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY está vazia no Vercel.");
+  }
+
+  const endpoint = `${SUPABASE_URL}/rest/v1/freelas?select=*&order=created_at.asc`;
+
+  const response = await fetch(endpoint, {
+    headers,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Erro ao buscar tabela "freelas". Status ${response.status}. Resposta: ${text}`);
   }
 
   return response.json();
@@ -374,6 +435,7 @@ export default function FinanceiroJeanNovaes() {
   }
 
   const [trabalhos, setTrabalhos] = useState<Trabalho[]>([]);
+  const [freelas, setFreelas] = useState<Freela[]>([]);
   const [custos, setCustos] = useState<Custo[]>([]);
   const [custosFixos, setCustosFixos] = useState<CustoFixo[]>([]);
 
@@ -399,13 +461,15 @@ export default function FinanceiroJeanNovaes() {
       setErro("");
       setLoading(true);
 
-      const [trabalhosData, custosData, custosFixosData] = await Promise.all([
+      const [trabalhosData, freelasData, custosData, custosFixosData] = await Promise.all([
         apiGet<Trabalho>("trabalhos"),
+        apiGetFreelas(),
         apiGet<Custo>("custos"),
         apiGetCustosFixos(),
       ]);
 
       setTrabalhos(trabalhosData);
+      setFreelas(freelasData);
       setCustos(custosData);
       setCustosFixos(custosFixosData);
 
@@ -449,9 +513,19 @@ export default function FinanceiroJeanNovaes() {
       .filter((c) => c.tipo === "Pessoal")
       .reduce((sum, c) => sum + Number(c.valor || 0), 0);
 
-    const freelasPagos = trabalhosDoMes
-      .filter((t) => Boolean(t.freela_pago))
-      .reduce((sum, t) => sum + Number(t.freela_valor || 0), 0);
+    const idsTrabalhosDoMes = new Set(trabalhosDoMes.map((trabalho) => trabalho.id));
+
+    const freelasPagosNovos = freelas
+      .filter((freela) => idsTrabalhosDoMes.has(freela.trabalho_id) && Boolean(freela.pago))
+      .reduce((sum, freela) => sum + Number(freela.valor || 0), 0);
+
+    const trabalhosComFreelasNovos = new Set(freelas.map((freela) => freela.trabalho_id));
+
+    const freelasPagosAntigos = trabalhosDoMes
+      .filter((trabalho) => !trabalhosComFreelasNovos.has(trabalho.id) && Boolean(trabalho.freela_pago))
+      .reduce((sum, trabalho) => sum + Number(trabalho.freela_valor || 0), 0);
+
+    const freelasPagos = freelasPagosNovos + freelasPagosAntigos;
 
     const custosTrabalhoTotal = custosTrabalho + freelasPagos;
 
@@ -464,10 +538,24 @@ export default function FinanceiroJeanNovaes() {
       custosPessoais,
       custosGerais,
     };
-  }, [trabalhosDoMes, custosDoMes]);
+  }, [trabalhosDoMes, custosDoMes, freelas]);
 
   function custosDoTrabalho(trabalhoId: string) {
     return custos.filter((custo) => custo.trabalho_id === trabalhoId);
+  }
+
+  function freelasDoTrabalho(trabalhoId: string) {
+    return freelas.filter((freela) => freela.trabalho_id === trabalhoId);
+  }
+
+  function totalFreelasTrabalho(trabalho: Trabalho) {
+    const vinculados = freelasDoTrabalho(trabalho.id);
+
+    if (vinculados.length > 0) {
+      return vinculados.reduce((sum, freela) => sum + Number(freela.valor || 0), 0);
+    }
+
+    return Number(trabalho.freela_valor || 0);
   }
 
   function totalCustosTrabalho(trabalho: Trabalho) {
@@ -476,7 +564,7 @@ export default function FinanceiroJeanNovaes() {
       0
     );
 
-    return custosVinculados + Number(trabalho.freela_valor || 0);
+    return custosVinculados + totalFreelasTrabalho(trabalho);
   }
 
   function lucroPrevisto(trabalho: Trabalho) {
@@ -484,8 +572,14 @@ export default function FinanceiroJeanNovaes() {
   }
 
   function trabalhoFinalizado(trabalho: Trabalho) {
-    const temFreela = Number(trabalho.freela_valor || 0) > 0;
-    return Boolean(trabalho.recebido) && Boolean(trabalho.entregue) && (!temFreela || Boolean(trabalho.freela_pago));
+    const vinculados = freelasDoTrabalho(trabalho.id);
+    const temFreelaNovo = vinculados.length > 0;
+    const novosPagos = !temFreelaNovo || vinculados.every((freela) => Boolean(freela.pago));
+
+    const temFreelaAntigo = !temFreelaNovo && Number(trabalho.freela_valor || 0) > 0;
+    const antigoPago = !temFreelaAntigo || Boolean(trabalho.freela_pago);
+
+    return Boolean(trabalho.recebido) && Boolean(trabalho.entregue) && novosPagos && antigoPago;
   }
 
   async function criarTrabalho() {
@@ -513,13 +607,26 @@ export default function FinanceiroJeanNovaes() {
         valor_cobrado: parseMoney(trabalhoForm.valor_cobrado),
         recebido: trabalhoForm.recebido,
         entregue: trabalhoForm.entregue,
-        freela_nome: trabalhoForm.freela_nome.trim(),
-        freela_valor: parseMoney(trabalhoForm.freela_valor),
-        freela_pago: trabalhoForm.freela_pago,
+        freela_nome: "",
+        freela_valor: 0,
+        freela_pago: false,
         observacoes: trabalhoForm.observacoes,
       };
 
       const trabalhoCriado = await apiInsert<Trabalho>("trabalhos", body);
+
+      const freelasValidos = trabalhoForm.freelas_rascunho.filter(
+        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0
+      );
+
+      for (const freela of freelasValidos) {
+        await apiInsert<Freela>("freelas", {
+          trabalho_id: trabalhoCriado.id,
+          nome: freela.nome.trim() || "Freela",
+          valor: parseMoney(freela.valor),
+          pago: freela.pago,
+        });
+      }
 
       const custosValidos = trabalhoForm.custos_rascunho.filter(
         (custo) => custo.nome.trim() || parseMoney(custo.valor) > 0
@@ -571,13 +678,31 @@ export default function FinanceiroJeanNovaes() {
         valor_cobrado: parseMoney(trabalhoForm.valor_cobrado),
         recebido: trabalhoForm.recebido,
         entregue: trabalhoForm.entregue,
-        freela_nome: trabalhoForm.freela_nome.trim(),
-        freela_valor: parseMoney(trabalhoForm.freela_valor),
-        freela_pago: trabalhoForm.freela_pago,
+        freela_nome: "",
+        freela_valor: 0,
+        freela_pago: false,
         observacoes: trabalhoForm.observacoes,
       };
 
       await apiUpdate<Trabalho>("trabalhos", trabalhoEditando.id, body);
+
+      const freelasAtuais = freelasDoTrabalho(trabalhoEditando.id);
+      for (const freela of freelasAtuais) {
+        await apiDelete("freelas", freela.id);
+      }
+
+      const freelasValidos = trabalhoForm.freelas_rascunho.filter(
+        (freela) => freela.nome.trim() || parseMoney(freela.valor) > 0
+      );
+
+      for (const freela of freelasValidos) {
+        await apiInsert<Freela>("freelas", {
+          trabalho_id: trabalhoEditando.id,
+          nome: freela.nome.trim() || "Freela",
+          valor: parseMoney(freela.valor),
+          pago: freela.pago,
+        });
+      }
 
       setTrabalhoEditando(null);
       setTrabalhoForm(emptyTrabalhoForm(body.data));
@@ -892,7 +1017,7 @@ export default function FinanceiroJeanNovaes() {
   function abrirEdicaoTrabalho(trabalho: Trabalho) {
     setNovoTrabalhoAberto(false);
     setTrabalhoEditando(trabalho);
-    setTrabalhoForm(trabalhoToForm(trabalho));
+    setTrabalhoForm(trabalhoToForm(trabalho, freelas));
   }
 
   function abrirEdicaoCusto(custo: Custo) {
@@ -1110,6 +1235,7 @@ export default function FinanceiroJeanNovaes() {
               <CustosDoTrabalhoBox
                 trabalho={trabalhoEditando}
                 custos={custosDoTrabalho(trabalhoEditando.id)}
+                freelas={freelasDoTrabalho(trabalhoEditando.id)}
                 onAdd={() => abrirNovoCustoDoTrabalho(trabalhoEditando)}
                 onEdit={abrirEdicaoCusto}
               />
@@ -1432,6 +1558,36 @@ function TrabalhoFormBox({
   permitirCustosLivres?: boolean;
   saveLabel?: string;
 }) {
+  function adicionarFreelaRascunho() {
+    setValue({
+      ...value,
+      freelas_rascunho: [
+        ...value.freelas_rascunho,
+        { id: crypto.randomUUID(), nome: "", valor: "", pago: false },
+      ],
+    });
+  }
+
+  function atualizarFreelaRascunho(
+    id: string,
+    campo: "nome" | "valor" | "pago",
+    novoValor: string | boolean
+  ) {
+    setValue({
+      ...value,
+      freelas_rascunho: value.freelas_rascunho.map((freela) =>
+        freela.id === id ? { ...freela, [campo]: novoValor } : freela
+      ),
+    });
+  }
+
+  function removerFreelaRascunho(id: string) {
+    setValue({
+      ...value,
+      freelas_rascunho: value.freelas_rascunho.filter((freela) => freela.id !== id),
+    });
+  }
+
   function adicionarCustoRascunho() {
     setValue({
       ...value,
@@ -1463,8 +1619,13 @@ function TrabalhoFormBox({
     0
   );
 
+  const totalFreelasRascunho = value.freelas_rascunho.reduce(
+    (sum, freela) => sum + parseMoney(freela.valor),
+    0
+  );
+
   const lucroPrevistoRascunho =
-    parseMoney(value.valor_cobrado) - parseMoney(value.freela_valor) - totalCustosRascunho;
+    parseMoney(value.valor_cobrado) - totalFreelasRascunho - totalCustosRascunho;
 
   return (
     <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-5">
@@ -1535,32 +1696,89 @@ function TrabalhoFormBox({
       </div>
 
       <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-5 space-y-4">
-        <h4 className="font-semibold">Freela</h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            placeholder="Nome do freela"
-            value={value.freela_nome}
-            onChange={(event) => setValue({ ...value, freela_nome: event.target.value })}
-            className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 outline-none"
-          />
-
-          <input
-            placeholder="Valor do freela — ex: 300"
-            inputMode="decimal"
-            value={value.freela_valor}
-            onChange={(event) => setValue({ ...value, freela_valor: event.target.value })}
-            className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 outline-none"
-          />
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h4 className="font-semibold">Freelas</h4>
+            <p className="text-cyan-100/55 text-sm mt-1">
+              Adicione quantas pessoas trabalharam neste serviço.
+            </p>
+          </div>
 
           <button
             type="button"
-            onClick={() => setValue({ ...value, freela_pago: !value.freela_pago })}
-            className="bg-orange-500/15 text-orange-300 border border-orange-500/20 rounded-2xl p-4 text-left"
+            onClick={adicionarFreelaRascunho}
+            className="bg-white text-black rounded-2xl px-4 py-3 font-semibold shrink-0"
           >
-            Freela pago? {value.freela_pago ? "Sim" : "Não"}
+            + Adicionar freela
           </button>
         </div>
+
+        {value.freelas_rascunho.length === 0 && (
+          <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/55 text-sm">
+            Nenhum freela adicionado.
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {value.freelas_rascunho.map((freela) => (
+            <div
+              key={freela.id}
+              className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4 space-y-3"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_170px] gap-3">
+                <input
+                  placeholder="Nome do freela"
+                  value={freela.nome}
+                  onChange={(event) =>
+                    atualizarFreelaRascunho(freela.id, "nome", event.target.value)
+                  }
+                  className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
+                />
+
+                <input
+                  placeholder="Valor — ex: 300"
+                  inputMode="decimal"
+                  value={freela.valor}
+                  onChange={(event) =>
+                    atualizarFreelaRascunho(freela.id, "valor", event.target.value)
+                  }
+                  className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    atualizarFreelaRascunho(freela.id, "pago", !freela.pago)
+                  }
+                  className={`rounded-2xl p-4 text-left ${
+                    freela.pago
+                      ? "bg-green-500/15 text-green-300 border border-green-500/20"
+                      : "bg-orange-500/15 text-orange-300 border border-orange-500/20"
+                  }`}
+                >
+                  Freela pago? {freela.pago ? "Sim" : "Não"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => removerFreelaRascunho(freela.id)}
+                  className="bg-red-500/15 text-red-300 border border-red-500/20 rounded-2xl px-4 py-3"
+                >
+                  Apagar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {value.freelas_rascunho.length > 0 && (
+          <div className="bg-zinc-900 border border-cyan-900/40 rounded-2xl p-4">
+            <p className="text-cyan-100/55 text-sm">Total de freelas</p>
+            <p className="font-bold text-xl mt-1">{money(totalFreelasRascunho)}</p>
+          </div>
+        )}
       </div>
 
       {permitirCustosLivres && (
@@ -1675,16 +1893,35 @@ function TrabalhoFormBox({
 function CustosDoTrabalhoBox({
   trabalho,
   custos,
+  freelas,
   onAdd,
   onEdit,
 }: {
   trabalho: Trabalho;
   custos: Custo[];
+  freelas: Freela[];
   onAdd: () => void;
   onEdit: (custo: Custo) => void;
 }) {
   const totalCustosLivres = custos.reduce((sum, custo) => sum + Number(custo.valor || 0), 0);
-  const freela = Number(trabalho.freela_valor || 0);
+
+  const freelasExibidos =
+    freelas.length > 0
+      ? freelas
+      : Number(trabalho.freela_valor || 0) > 0
+        ? [{
+            id: `antigo-${trabalho.id}`,
+            trabalho_id: trabalho.id,
+            nome: trabalho.freela_nome || "sem nome",
+            valor: Number(trabalho.freela_valor || 0),
+            pago: Boolean(trabalho.freela_pago),
+          }]
+        : [];
+
+  const totalFreelas = freelasExibidos.reduce(
+    (sum, freela) => sum + Number(freela.valor || 0),
+    0
+  );
 
   return (
     <div className="bg-[#0d1820]/90 border border-cyan-800/40 rounded-3xl p-5 shadow-xl shadow-cyan-950/20 space-y-4">
@@ -1706,7 +1943,7 @@ function CustosDoTrabalhoBox({
       </div>
 
       <div className="space-y-3">
-        {custos.length === 0 && freela === 0 && (
+        {custos.length === 0 && freelasExibidos.length === 0 && (
           <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4 text-cyan-100/55">
             Nenhum custo vinculado a este trabalho.
           </div>
@@ -1728,16 +1965,21 @@ function CustosDoTrabalhoBox({
           </button>
         ))}
 
-        {freela > 0 && (
-          <div className="flex items-center justify-between gap-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4">
+        {freelasExibidos.map((freela) => (
+          <div
+            key={freela.id}
+            className="flex items-center justify-between gap-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl p-4"
+          >
             <div className="min-w-0">
-              <p className="font-medium truncate">Freela — {trabalho.freela_nome || "sem nome"}</p>
-              <p className="text-orange-300 text-sm">Custo automático do trabalho</p>
+              <p className="font-medium truncate">Freela — {freela.nome || "sem nome"}</p>
+              <p className="text-orange-300 text-sm">
+                {freela.pago ? "Pago" : "Pagamento pendente"}
+              </p>
             </div>
 
-            <p className="font-bold whitespace-nowrap">{money(freela)}</p>
+            <p className="font-bold whitespace-nowrap">{money(freela.valor)}</p>
           </div>
-        )}
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1748,7 +1990,7 @@ function CustosDoTrabalhoBox({
 
         <div className="bg-[#061016]/80 border border-cyan-900/40 rounded-2xl p-4">
           <p className="text-cyan-100/55 text-sm">Custos + freela</p>
-          <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + freela)}</p>
+          <p className="text-2xl font-bold mt-1">{money(totalCustosLivres + totalFreelas)}</p>
         </div>
       </div>
     </div>
